@@ -66,9 +66,12 @@ class KamisClient:
                 continue
             records.append(
                 PriceRecord(
-                    product_code=str(row.get("itemcode", "")),
-                    product_name=row.get("itemname", "").strip(),
-                    market=row.get("countyname", "전국"),
+                    # dict.get(key, default)는 키가 없을 때만 default를 쓴다.
+                    # KAMIS는 일부 필드를 JSON null로 내려주는 경우가 있어
+                    # `or` 폴백을 함께 써야 None으로 인한 크래시를 막을 수 있다.
+                    product_code=str(row.get("itemcode") or ""),
+                    product_name=(row.get("itemname") or "").strip(),
+                    market=row.get("countyname") or "전국",
                     trade_date=trade_date,
                     price_per_unit=price,
                 )

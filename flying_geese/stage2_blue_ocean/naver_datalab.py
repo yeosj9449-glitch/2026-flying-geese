@@ -55,5 +55,8 @@ class NaverDatalabClient:
         for group in datalab_response.get("results", []):
             data_points = group.get("data", [])
             if data_points:
-                result[group["title"]] = float(data_points[-1].get("ratio", 0.0))
+                # ratio가 JSON null로 내려오는 구간이 있을 수 있어 `or` 폴백을 쓴다.
+                # get(key, default)는 키가 존재하되 값이 None일 때는 default를
+                # 적용하지 않으므로 float(None)에서 크래시가 날 수 있다.
+                result[group["title"]] = float(data_points[-1].get("ratio") or 0.0)
         return result
