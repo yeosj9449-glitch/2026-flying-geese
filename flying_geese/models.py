@@ -39,6 +39,17 @@ class ApcSite:
     is_smart_apc: bool = True
 
 
+@dataclass
+class SeasonalItem:
+    category: str  # KAMIS 등 도매가 조회 단위 대표 품목 (예: 사과)
+    variety_keyword: str  # 이 시기에 미는 세부 품종 (예: 홍로사과)
+    product_type: str  # 과일 / 농산 / 수산 등
+    peak_months: list[int]  # 제철 구간 (1~12), 여러 달에 걸칠 수 있음
+
+    def is_in_season(self, month: int) -> bool:
+        return month in self.peak_months
+
+
 # ---------------------------------------------------------------------------
 # 2단계: 세부 품종 세분화 & 블루오션 스코어링
 # ---------------------------------------------------------------------------

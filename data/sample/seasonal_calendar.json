@@ -1,0 +1,48 @@
+[
+  {"category": "한라봉", "variety": "한라봉", "type": "과일", "peak_months": [1, 2, 3]},
+  {"category": "딸기", "variety": "설향딸기", "type": "과일", "peak_months": [12, 1, 2, 3, 4]},
+  {"category": "굴", "variety": "통영 생굴", "type": "수산", "peak_months": [11, 12, 1, 2]},
+  {"category": "방어", "variety": "제주 방어", "type": "수산", "peak_months": [11, 12, 1]},
+
+  {"category": "냉이", "variety": "봄 냉이", "type": "농산", "peak_months": [2, 3, 4]},
+  {"category": "달래", "variety": "달래", "type": "농산", "peak_months": [2, 3, 4]},
+  {"category": "주꾸미", "variety": "봄 주꾸미", "type": "수산", "peak_months": [3, 4]},
+  {"category": "도다리", "variety": "도다리", "type": "수산", "peak_months": [3, 4]},
+
+  {"category": "아스파라거스", "variety": "아스파라거스", "type": "농산", "peak_months": [4, 5]},
+  {"category": "두릅", "variety": "참두릅", "type": "농산", "peak_months": [3, 4]},
+
+  {"category": "참외", "variety": "성주 참외", "type": "과일", "peak_months": [5, 6, 7]},
+  {"category": "완두콩", "variety": "완두콩", "type": "농산", "peak_months": [5, 6]},
+  {"category": "멍게", "variety": "멍게", "type": "수산", "peak_months": [5, 6]},
+
+  {"category": "감자", "variety": "수미감자", "type": "농산", "peak_months": [6, 7]},
+  {"category": "매실", "variety": "매실", "type": "과일", "peak_months": [6]},
+  {"category": "마늘", "variety": "햇마늘", "type": "농산", "peak_months": [6]},
+  {"category": "병어", "variety": "병어", "type": "수산", "peak_months": [6, 7]},
+
+  {"category": "옥수수", "variety": "찰옥수수", "type": "농산", "peak_months": [7, 8]},
+  {"category": "복숭아", "variety": "백도복숭아", "type": "과일", "peak_months": [7, 8]},
+  {"category": "수박", "variety": "수박", "type": "과일", "peak_months": [7, 8]},
+  {"category": "민어", "variety": "민어", "type": "수산", "peak_months": [7, 8]},
+
+  {"category": "사과", "variety": "홍로사과", "type": "과일", "peak_months": [8, 9]},
+  {"category": "포도", "variety": "거봉포도", "type": "과일", "peak_months": [7, 8]},
+  {"category": "배추", "variety": "고랭지배추", "type": "농산", "peak_months": [7, 8, 9]},
+  {"category": "오징어", "variety": "동해 생물오징어", "type": "수산", "peak_months": [8, 9, 10]},
+
+  {"category": "사과", "variety": "감홍사과", "type": "과일", "peak_months": [9, 10]},
+  {"category": "포도", "variety": "샤인머스켓", "type": "과일", "peak_months": [8, 9, 10]},
+  {"category": "배", "variety": "신고배", "type": "과일", "peak_months": [9, 10]},
+  {"category": "밤", "variety": "밤", "type": "농산", "peak_months": [9, 10]},
+  {"category": "새우", "variety": "신안 왕대하", "type": "수산", "peak_months": [9, 10]},
+  {"category": "고구마", "variety": "베니하르카 호박고구마", "type": "농산", "peak_months": [8, 9, 10]},
+
+  {"category": "사과", "variety": "부사사과", "type": "과일", "peak_months": [10, 11, 12]},
+  {"category": "단감", "variety": "단감", "type": "과일", "peak_months": [10, 11]},
+  {"category": "꽃게", "variety": "서해 숫꽃게", "type": "수산", "peak_months": [9, 10, 11]},
+
+  {"category": "감귤", "variety": "노지감귤", "type": "과일", "peak_months": [11, 12, 1]},
+  {"category": "배추", "variety": "월동배추", "type": "농산", "peak_months": [11, 12]},
+  {"category": "유자", "variety": "유자", "type": "과일", "peak_months": [11, 12]}
+]

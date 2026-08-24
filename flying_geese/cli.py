@@ -17,10 +17,14 @@ def main() -> None:
 
 
 def _print_report(report) -> None:
-    print("=== 1단계: 폭등 제외 후 통과 품목 ===")
+    print(f"=== 1단계: {report.target_month}월 제철 캘린더 & 폭등 제외 후 통과 품목 ===")
     for item in report.passing_price_items:
-        print(f"  - {item.product_name}: 최근가 {item.latest_price:,.0f}원")
+        in_season = "제철" if item.product_name in report.seasonal_matched_categories else "비수기"
+        print(f"  - {item.product_name} [{in_season}]: 최근가 {item.latest_price:,.0f}원")
     print(f"  스마트 APC 우선 연동 품목: {sorted(report.apc_priority_products)}")
+    if report.upcoming_next_month:
+        preview = ", ".join(f"{i.category}({i.variety_keyword})" for i in report.upcoming_next_month)
+        print(f"  다음 달 제철 예정 (사전예약 마케팅 후보): {preview}")
 
     print("\n=== 2단계: 블루오션 스코어링 상위 품종 ===")
     for candidate in report.blue_ocean_ranking:

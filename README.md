@@ -10,13 +10,28 @@
 
 | 단계 | 모듈 | 내용 |
 | --- | --- | --- |
-| 1 | `flying_geese/stage1_calendar` | KAMIS 도소매가 API 연동, 전월/전년 대비 폭등 품목(기본 20%↑) 자동 제외, 스마트 APC 우수 출하 품목 연동 |
+| 1 | `flying_geese/stage1_calendar` | 12개월 제철 캘린더(대표품목→세부품종, 제철 구간) 매칭, KAMIS 도소매가 API 연동, 전월/전년 대비 폭등 품목(기본 20%↑) 자동 제외, 스마트 APC 우수 출하 품목 연동, 다음 달 제철 예정 미리보기 |
 | 2 | `flying_geese/stage2_blue_ocean` | 네이버 데이터랩/검색광고 API, 대표 품목 → 세부 품종 확장, 블루오션 지수(검색량/경쟁상품 수) 스코어링 |
 | 3 | `flying_geese/stage3_supplier` | 공급처 이행률/배송시간/반품률 기반 신뢰 점수 산출 및 CS 위험 공급처 자동 배제 |
 | 4 | `flying_geese/stage4_simulator` | 상시 제철품목 vs 프리미엄 선물세트 믹스로 목표 매출 역산, 정산 주기 기반 운전자금 시뮬레이션 |
 | 5 | `flying_geese/stage5_automation` | 신규 주문 수집 → 공급처별 발주서 엑셀 자동 생성 → 송장 수집 → 발송 처리 API 호출 및 배송 상태 모니터링 |
 
 `flying_geese/pipeline.py`가 5단계를 순서대로 오케스트레이션합니다.
+
+### 제철 캘린더 게이팅 (2단계 스코어링과 연동)
+
+1단계에서 통과한(폭등 제외 + 가격 안정) 대표 품목 중, `data/sample/seasonal_calendar.json`의
+이번 달 제철 구간(`peak_months`)에 매칭되는 세부 품종만 2단계 블루오션 스코어링 대상이
+됩니다. 예를 들어 8월에는 사과 카테고리에서 `감홍사과`/`부사사과`가 아니라 제철인
+`홍로사과`만 채점됩니다 — 비수기 품종을 추천 상단에 노출하는 것을 방지합니다.
+제철 캘린더에 없는 대표 품목은 기존 품종 매핑표(`variety_map.json`) 전체를 훑는
+방식으로 자동 폴백합니다. 또한 다음 달에 새로 제철이 시작되는 품종은
+`upcoming_next_month`로 미리 확인할 수 있어(이미 이번 달도 제철인 품종은 제외),
+사전예약/입고 준비 마케팅에 활용할 수 있습니다.
+
+`run_demo_pipeline(target_month=...)`로 기준월을 지정할 수 있고, 생략하면 실행 시점의
+달력월을 사용합니다. `flying_geese/stage1_calendar/seasonal_calendar.py`가 로딩/조회
+로직을 담당합니다.
 
 ## 빠른 시작 (API 키 없이 샘플 데이터로 전체 흐름 검증)
 
@@ -60,7 +75,7 @@ flying_geese/
   models.py             # 단계 공용 데이터 모델
   pipeline.py            # 5단계 오케스트레이터 (데모: data/sample 사용)
   cli.py                 # python -m flying_geese.cli run
-  stage1_calendar/        # KAMIS/aT, 가격 변동성, APC 연동
+  stage1_calendar/        # 제철 캘린더, KAMIS/aT, 가격 변동성, APC 연동
   stage2_blue_ocean/      # 네이버 데이터랩/검색광고, 품종 확장, 블루오션 스코어링
   stage3_supplier/        # 공급처 신뢰 점수, CS 리스크 필터
   stage4_simulator/       # 마진 시뮬레이터, 현금흐름
