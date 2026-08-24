@@ -13,6 +13,18 @@ def test_simulate_default_mix_hits_target_revenue_scale():
     assert result.expected_net_profit > 0
 
 
+def test_simulate_deducts_platform_commission_from_net_profit():
+    no_commission = simulate(target_monthly_revenue=5_000_000, platform_commission_rate=0.0)
+    with_commission = simulate(target_monthly_revenue=5_000_000, platform_commission_rate=0.10)
+
+    # 총마진(매출원가 차감분)은 수수료율과 무관하게 동일해야 한다.
+    assert with_commission.expected_gross_margin == no_commission.expected_gross_margin
+    # 순수익은 총마진에서 플랫폼 수수료(매출 기준)만큼 낮아야 한다.
+    assert with_commission.expected_net_profit == with_commission.expected_gross_margin - with_commission.platform_fee
+    assert with_commission.expected_net_profit < no_commission.expected_net_profit
+    assert no_commission.platform_fee == 0
+
+
 def test_simulate_rejects_invalid_mix_ratio():
     bad_mix = [
         ProductMixItem(ProductTier.STANDARD, 30_000, 0.15, 0.5),

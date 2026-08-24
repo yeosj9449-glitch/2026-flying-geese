@@ -124,6 +124,7 @@ class SimulationResult:
     expected_gross_margin: float
     expected_net_profit: float
     tier_breakdown: dict[str, dict[str, float]]
+    platform_fee: float = 0.0  # 마진에서 차감된 플랫폼 판매 수수료
 
 
 # ---------------------------------------------------------------------------

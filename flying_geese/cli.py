@@ -48,6 +48,8 @@ def _print_report(report) -> None:
     sim = report.simulation
     print(f"  목표 월매출: {sim.target_monthly_revenue:,}원")
     print(f"  필요 일 판매건수: {sim.required_daily_orders} / 월 판매건수: {sim.required_monthly_orders}")
+    print(f"  예상 월 총마진: {sim.expected_gross_margin:,}원")
+    print(f"  플랫폼 판매 수수료: -{sim.platform_fee:,}원")
     print(f"  예상 월 순수익: {sim.expected_net_profit:,}원")
     for tier, detail in sim.tier_breakdown.items():
         print(f"    · {tier}: {detail}")

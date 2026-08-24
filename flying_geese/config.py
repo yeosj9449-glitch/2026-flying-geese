@@ -67,6 +67,9 @@ class Settings:
     min_blue_ocean_search_volume: int = field(
         default_factory=lambda: _env_int("MIN_BLUE_OCEAN_SEARCH_VOLUME", 100)
     )
+    platform_commission_rate: float = field(
+        default_factory=lambda: _env_float("PLATFORM_COMMISSION_RATE", 0.10)
+    )
     min_supplier_fulfillment_rate: float = field(
         default_factory=lambda: _env_float("MIN_SUPPLIER_FULFILLMENT_RATE", 0.95)
     )

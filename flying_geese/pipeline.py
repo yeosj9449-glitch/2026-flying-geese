@@ -151,7 +151,10 @@ def _run_stage3(data_dir: Path, settings: Settings) -> list[SupplierEvaluation]:
 
 
 def _run_stage4(settings: Settings) -> tuple[SimulationResult, CashflowProjection]:
-    simulation = simulate(settings.target_monthly_revenue)
+    simulation = simulate(
+        settings.target_monthly_revenue,
+        platform_commission_rate=settings.platform_commission_rate,
+    )
     cashflow = project_cashflow(settings.target_monthly_revenue)
     return simulation, cashflow
 
