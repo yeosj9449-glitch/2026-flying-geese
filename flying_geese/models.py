@@ -59,12 +59,23 @@ class VarietyCandidate:
     variety_keyword: str  # 예: 감홍사과
     monthly_search_volume: int
     competitor_product_count: int
+    search_trend_ratio: float = 1.0  # 최근 검색 모멘텀 (네이버 데이터랩 기반, 1.0=변화없음, >1 상승세)
 
     @property
     def blue_ocean_index(self) -> float:
         if self.competitor_product_count <= 0:
             return float(self.monthly_search_volume)
         return self.monthly_search_volume / self.competitor_product_count
+
+    @property
+    def trending_score(self) -> float:
+        """블루오션 지수에 검색 모멘텀을 반영한 최종 스코어.
+
+        상승세 키워드를 우대하되, 데이터랩 응답 이상치가 순위를 과도하게
+        흔들지 않도록 모멘텀 배수를 0.5~2.0배로 clamp한다.
+        """
+        momentum = max(0.5, min(self.search_trend_ratio, 2.0))
+        return self.blue_ocean_index * momentum
 
 
 # ---------------------------------------------------------------------------

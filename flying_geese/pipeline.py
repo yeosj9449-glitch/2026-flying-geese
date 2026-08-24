@@ -55,6 +55,7 @@ class PipelineReport:
     seasonal_matched_categories: set[str]
     upcoming_next_month: list[SeasonalItem]
     blue_ocean_ranking: list[VarietyCandidate]
+    blue_ocean_missing_competitor_data: list[str]
     supplier_evaluations: list[SupplierEvaluation]
     simulation: SimulationResult
     cashflow: CashflowProjection
@@ -110,14 +111,21 @@ def _run_stage1(
 
 def _run_stage2(
     data_dir: Path,
+    settings: Settings,
     passing_categories: list[str],
     seasonal_variety_map: dict[str, list[str]],
-) -> list[VarietyCandidate]:
+) -> tuple[list[VarietyCandidate], list[str]]:
     """제철 캘린더에 매칭된 품종만 우선 채점하고, 캘린더에 없는 대표품목은
-    품종 매핑표 전체를 훑는 기존 방식으로 폴백한다."""
+    품종 매핑표 전체를 훑는 기존 방식으로 폴백한다.
+
+    검색 모멘텀(search_trends)을 반영해 상승세 품종을 우대하고, 경쟁상품
+    데이터가 없는 품종은 점수 왜곡을 막기 위해 스코어링에서 제외한다.
+    반환값: (블루오션 랭킹, 데이터 누락으로 제외된 품종 목록)
+    """
     variety_map = load_variety_map(data_dir / "variety_map.json")
     search_volumes = _load_json(data_dir / "search_volumes.json")
     competitor_counts = _load_json(data_dir / "competitor_counts.json")
+    search_trends = _load_json(data_dir / "search_trends.json")
 
     fallback_categories = [c for c in passing_categories if c not in seasonal_variety_map]
     fallback_map = expand_varieties(fallback_categories, variety_map)
@@ -125,11 +133,16 @@ def _run_stage2(
     combined_map = {**fallback_map, **seasonal_variety_map}
 
     all_candidates: list[VarietyCandidate] = []
+    all_missing: list[str] = []
     for base_product, varieties in combined_map.items():
-        all_candidates.extend(
-            build_candidates(base_product, varieties, search_volumes, competitor_counts)
+        candidates, missing = build_candidates(
+            base_product, varieties, search_volumes, competitor_counts, search_trends
         )
-    return rank_blue_ocean(all_candidates)
+        all_candidates.extend(candidates)
+        all_missing.extend(missing)
+
+    ranked = rank_blue_ocean(all_candidates, min_search_volume=settings.min_blue_ocean_search_volume)
+    return ranked, all_missing
 
 
 def _run_stage3(data_dir: Path, settings: Settings) -> list[SupplierEvaluation]:
@@ -189,7 +202,9 @@ def run_demo_pipeline(
         data_dir, settings, target_month
     )
     passing_categories = sorted({r.product_name for r in passing_prices})
-    blue_ocean_ranking = _run_stage2(data_dir, passing_categories, seasonal_variety_map)
+    blue_ocean_ranking, missing_competitor_data = _run_stage2(
+        data_dir, settings, passing_categories, seasonal_variety_map
+    )
     supplier_evaluations = _run_stage3(data_dir, settings)
     simulation, cashflow = _run_stage4(settings)
     po_path, dispatched, missing, shipping_summary = _run_stage5(data_dir, output_dir)
@@ -201,6 +216,7 @@ def run_demo_pipeline(
         seasonal_matched_categories=set(seasonal_variety_map.keys()),
         upcoming_next_month=upcoming,
         blue_ocean_ranking=blue_ocean_ranking,
+        blue_ocean_missing_competitor_data=missing_competitor_data,
         supplier_evaluations=supplier_evaluations,
         simulation=simulation,
         cashflow=cashflow,

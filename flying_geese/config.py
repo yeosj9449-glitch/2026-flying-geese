@@ -64,6 +64,9 @@ class Settings:
     price_surge_exclude_pct: float = field(
         default_factory=lambda: _env_float("PRICE_SURGE_EXCLUDE_PCT", 20.0)
     )
+    min_blue_ocean_search_volume: int = field(
+        default_factory=lambda: _env_int("MIN_BLUE_OCEAN_SEARCH_VOLUME", 100)
+    )
     min_supplier_fulfillment_rate: float = field(
         default_factory=lambda: _env_float("MIN_SUPPLIER_FULFILLMENT_RATE", 0.95)
     )

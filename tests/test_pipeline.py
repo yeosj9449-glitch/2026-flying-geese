@@ -18,6 +18,7 @@ def test_run_demo_pipeline_end_to_end(tmp_path):
     ranked_varieties = [c.variety_keyword for c in report.blue_ocean_ranking]
     assert ranked_varieties == ["베니하르카 호박고구마", "홍로사과"]
     assert "감홍사과" not in ranked_varieties  # 9월이 제철이므로 8월 기준에서는 제외
+    assert report.blue_ocean_missing_competitor_data == []
 
     # 다음 달(9월) 제철 예정 미리보기에 감홍사과가 포함되어야 한다.
     upcoming_varieties = {i.variety_keyword for i in report.upcoming_next_month}

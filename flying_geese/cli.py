@@ -30,9 +30,12 @@ def _print_report(report) -> None:
     for candidate in report.blue_ocean_ranking:
         print(
             f"  - {candidate.variety_keyword} ({candidate.base_product}): "
-            f"블루오션지수 {candidate.blue_ocean_index:.1f} "
+            f"최종점수 {candidate.trending_score:.1f} "
+            f"(블루오션지수 {candidate.blue_ocean_index:.1f} × 검색모멘텀 {candidate.search_trend_ratio:.2f}) "
             f"(검색량 {candidate.monthly_search_volume:,} / 경쟁상품 {candidate.competitor_product_count:,})"
         )
+    if report.blue_ocean_missing_competitor_data:
+        print(f"  ⚠ 경쟁상품 데이터 없음(스코어링 제외): {report.blue_ocean_missing_competitor_data}")
 
     print("\n=== 3단계: 공급처 신뢰도 평가 ===")
     for evaluation in report.supplier_evaluations:

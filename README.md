@@ -11,7 +11,7 @@
 | 단계 | 모듈 | 내용 |
 | --- | --- | --- |
 | 1 | `flying_geese/stage1_calendar` | 12개월 제철 캘린더(대표품목→세부품종, 제철 구간) 매칭, KAMIS 도소매가 API 연동, 전월/전년 대비 폭등 품목(기본 20%↑) 자동 제외, 스마트 APC 우수 출하 품목 연동, 다음 달 제철 예정 미리보기 |
-| 2 | `flying_geese/stage2_blue_ocean` | 네이버 데이터랩/검색광고 API, 대표 품목 → 세부 품종 확장, 블루오션 지수(검색량/경쟁상품 수) 스코어링 |
+| 2 | `flying_geese/stage2_blue_ocean` | 네이버 데이터랩/검색광고 API, 대표 품목 → 세부 품종 확장, 블루오션 지수(검색량/경쟁상품 수) × 검색 모멘텀 스코어링 |
 | 3 | `flying_geese/stage3_supplier` | 공급처 이행률/배송시간/반품률 기반 신뢰 점수 산출 및 CS 위험 공급처 자동 배제 |
 | 4 | `flying_geese/stage4_simulator` | 상시 제철품목 vs 프리미엄 선물세트 믹스로 목표 매출 역산, 정산 주기 기반 운전자금 시뮬레이션 |
 | 5 | `flying_geese/stage5_automation` | 신규 주문 수집 → 공급처별 발주서 엑셀 자동 생성 → 송장 수집 → 발송 처리 API 호출 및 배송 상태 모니터링 |
@@ -32,6 +32,22 @@
 `run_demo_pipeline(target_month=...)`로 기준월을 지정할 수 있고, 생략하면 실행 시점의
 달력월을 사용합니다. `flying_geese/stage1_calendar/seasonal_calendar.py`가 로딩/조회
 로직을 담당합니다.
+
+### 블루오션 스코어링 업그레이드: 검색 모멘텀 반영 + 데이터 누락 안전장치
+
+- **검색 모멘텀**: 블루오션 지수(검색량/경쟁상품 수)는 특정 시점의 스냅샷이라, 이미
+  인기가 식고 있는 키워드도 경쟁만 적으면 높은 점수를 받는 문제가 있었습니다.
+  `data/sample/search_trends.json`(네이버 데이터랩 `search_trend`/`latest_ratio_by_keyword`
+  결과로 채우는 값, 1.0=변화없음·1.0 초과=상승세)을 블루오션 지수에 곱해
+  `trending_score`를 최종 순위 기준으로 사용합니다 — 원시 지수가 더 낮아도 상승세인
+  품종이 앞설 수 있습니다 (`VarietyCandidate.trending_score`, 0.5~2.0배로 clamp).
+- **경쟁상품 데이터 누락 안전장치**: 기존에는 경쟁상품 수 데이터가 없는 품종을
+  `0`으로 임의 대체해, 데이터가 없을 뿐인데 블루오션 지수가 검색량 그대로 튀어올라
+  1위로 오인될 위험이 있었습니다. 이제는 그런 품종을 스코어링에서 제외하고
+  `PipelineReport.blue_ocean_missing_competitor_data`로 별도 보고합니다(CLI에도
+  `⚠ 경쟁상품 데이터 없음` 경고로 출력).
+- `MIN_BLUE_OCEAN_SEARCH_VOLUME` 환경변수로 노이즈 필터링 최소 검색량을 조정할 수
+  있습니다(기본 100, 다른 비즈니스 규칙 파라미터와 동일하게 `.env`로 관리).
 
 ## 빠른 시작 (API 키 없이 샘플 데이터로 전체 흐름 검증)
 
