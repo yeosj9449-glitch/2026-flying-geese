@@ -135,20 +135,47 @@ pytest
 가격 변동성 필터, 블루오션 스코어링, 공급처 리스크 필터, 마진/현금흐름
 시뮬레이터, 발주서 엑셀 생성, 배송 처리, 전체 파이프라인 통합까지 포함합니다.
 
-## 실 서비스 연동
+## 실전 파이프라인 (실 API 연동)
 
-`.env.example`을 `.env`로 복사한 뒤 아래 값을 채우면 각 클라이언트가 실 API를 호출합니다.
+`flying_geese/live_pipeline.py`의 `run_live_pipeline()` (또는
+`python -m flying_geese.cli run-live`)이 `data/sample/` 대신 실제 API를 호출해
+같은 5단계를 수행합니다. 데모 파이프라인이 이미 검증한 순수 로직(가격 변동성
+판정, 블루오션 스코어링, 공급처 리스크 필터, 마진 시뮬레이터, 발송 처리)을
+그대로 재사용하고, **데이터를 어디서 가져오는지만** 다릅니다.
 
-- `KAMIS_CERT_KEY` / `KAMIS_CERT_ID`: KAMIS 오픈API (`stage1_calendar/kamis_client.py`)
-- `AT_KAFB2B_API_KEY` / `AT_KAFB2B_BASE_URL`: aT 온라인도매시장 경락가 (`stage1_calendar/at_kafb2b_client.py`, 계약된 API 스펙에 맞게 엔드포인트/파라미터명 조정 필요)
-- `NAVER_DATALAB_CLIENT_ID` / `SECRET`: 네이버 데이터랩 검색어트렌드 (`stage2_blue_ocean/naver_datalab.py`)
-- `NAVER_SEARCHAD_API_KEY` / `SECRET_KEY` / `CUSTOMER_ID`: 네이버 검색광고 연관키워드 (`stage2_blue_ocean/naver_searchad.py`)
-- `COMMERCE_API_BASE_URL` / `COMMERCE_API_KEY`: 자사몰/커머스 플랫폼 주문 연동 (`stage5_automation/commerce_api.py`)
+⚠ **이 저장소의 자동화 테스트는 실 API에 대한 네트워크 호출 자체를 검증하지
+못했습니다** (오프라인 샌드박스 환경). 각 클라이언트의 응답 파싱 로직과
+오케스트레이션 흐름은 모킹으로 검증했지만, 실제 KAMIS/aT/네이버/커머스
+API가 문서와 정확히 같은 형태로 응답하는지는 실 키로 직접 확인해야 합니다.
 
-공영도매시장 경락가(aT KAFB2B), 쿠팡/스마트스토어 경쟁 상품 수는 공식 오픈API가
-없거나 계약이 필요하므로, `MarketplaceRankSource` / APC 로더처럼 어댑터를
-갈아끼울 수 있는 인터페이스로 설계했습니다. 운영자가 수집한 데이터를
-`data/` 하위 JSON/CSV로 채우거나, 자체 크롤러를 어댑터로 연결하면 됩니다.
+### 설정 절차
+
+1. `.env.example`을 `.env`로 복사하고 아래 값을 채웁니다.
+   - `KAMIS_CERT_KEY` / `KAMIS_CERT_ID`: KAMIS 오픈API (`stage1_calendar/kamis_client.py`) - 필수
+   - `NAVER_SEARCHAD_API_KEY` / `SECRET_KEY` / `CUSTOMER_ID`: 네이버 검색광고 연관키워드 (`stage2_blue_ocean/naver_searchad.py`) - 필수 (블루오션 스코어링의 검색량 산정에 반드시 필요)
+   - `AT_KAFB2B_API_KEY` / `AT_KAFB2B_BASE_URL`: aT 온라인도매시장 경락가 (`stage1_calendar/at_kafb2b_client.py`) - 선택, 미설정 시 KAMIS만 사용
+   - `NAVER_DATALAB_CLIENT_ID` / `SECRET`: 네이버 데이터랩 검색어트렌드 (`stage2_blue_ocean/naver_datalab.py`) - 선택, 미설정 시 검색 모멘텀은 중립값(1.0)으로 처리
+   - `COMMERCE_API_BASE_URL` / `COMMERCE_API_KEY`: 자사몰/커머스 플랫폼 주문 연동 (`stage5_automation/commerce_api.py`) - 필수
+2. `data/live/kamis_item_map.example.json`을 `data/live/kamis_item_map.json`으로
+   복사하고, 취급할 대표 품목별 KAMIS `item_code`/`kind_code`/`category_code`를
+   **KAMIS 표준코드 조회 API 또는 공식 문서에서 직접 확인**해 채웁니다
+   (`TODO_...` placeholder가 남아있으면 실행 시 명확한 에러로 막습니다).
+3. 아래는 공식 실시간 API가 없어 데모와 마찬가지로 운영자가 직접 관리하는
+   로컬 데이터입니다. `data/live/*.example.json`을 복사해 채웁니다(파일이
+   아예 없어도 안전한 기본값으로 동작하도록 만들었습니다 - 아래 참고).
+   - `apc_sites.json`: 실제 조사한 스마트 APC 정보 (없으면 우선 연동 표시 없이 진행)
+   - `competitor_counts.json`: 쿠팡/스마트스토어 등록 상품 수 (없으면 미등록 품종을 "경쟁 심함"으로 보수적으로 가정)
+   - `suppliers.json`: 실제 공급처 이행률/배송시간/반품률 (필수 - 없으면 3단계가 실행되지 않음)
+   - `tracking.csv`: 농가에서 회신한 송장번호 (`order_id,tracking_number`)
+4. `python -m flying_geese.cli run-live` 실행. `data/sample/seasonal_calendar.json`,
+   `variety_map.json`은 데모용으로 지어낸 가짜 데이터가 아니라 실제 농산물
+   품종/제철 지식으로 작성한 참고 데이터라 그대로 재사용하며, 취급 품목
+   범위에 맞게 계속 보강하는 것을 권장합니다 (반대로 `apc_sites.json` 등
+   `data/sample/`의 나머지 파일은 데모용 예시라 실전에서 절대 그대로 쓰면
+   안 됩니다 - `data/live/`에 실제 값을 채워야 합니다).
+
+`data/live/*.json`, `*.csv`(예시 파일 제외)는 운영자별 민감 정보라 `.gitignore`
+에 등록돼 있어 커밋되지 않습니다.
 
 ## 디렉터리 구조
 
@@ -156,13 +183,15 @@ pytest
 flying_geese/
   config.py            # 환경변수 기반 설정
   models.py             # 단계 공용 데이터 모델
-  pipeline.py            # 5단계 오케스트레이터 (데모: data/sample 사용)
-  cli.py                 # python -m flying_geese.cli run
-  stage1_calendar/        # 제철 캘린더, KAMIS/aT, 가격 변동성, APC 연동
+  pipeline.py            # 데모 5단계 오케스트레이터 (data/sample 사용)
+  live_pipeline.py        # 실전 5단계 오케스트레이터 (실 API 연동)
+  cli.py                 # python -m flying_geese.cli run | run-live
+  stage1_calendar/        # 제철 캘린더, KAMIS/aT KAFB2B, 가격 변동성, APC 연동
   stage2_blue_ocean/      # 네이버 데이터랩/검색광고, 품종 확장, 블루오션 스코어링
   stage3_supplier/        # 공급처 신뢰 점수, CS 리스크 필터
   stage4_simulator/       # 마진 시뮬레이터, 현금흐름
   stage5_automation/      # 주문 수집, 발주서 엑셀, 배송 처리
 data/sample/             # 데모/테스트용 샘플 데이터
+data/live/               # 실전 파이프라인용 로컬 설정 (.example.json/csv만 버전관리)
 tests/                    # pytest 단위/통합 테스트
 ```

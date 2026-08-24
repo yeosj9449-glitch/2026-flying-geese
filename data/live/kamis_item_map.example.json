@@ -1,0 +1,12 @@
+{
+  "사과": {
+    "item_code": "TODO_KAMIS_ITEM_CODE",
+    "kind_code": "TODO_KAMIS_KIND_CODE",
+    "category_code": "TODO_KAMIS_CATEGORY_CODE"
+  },
+  "고구마": {
+    "item_code": "TODO_KAMIS_ITEM_CODE",
+    "kind_code": "TODO_KAMIS_KIND_CODE",
+    "category_code": "TODO_KAMIS_CATEGORY_CODE"
+  }
+}

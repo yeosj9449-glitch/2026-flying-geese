@@ -26,9 +26,6 @@ class AtKafb2bClient:
         self.settings = settings
         self.timeout = timeout
 
-    def _ready(self) -> bool:
-        return bool(self.settings.at_kafb2b_api_key and self.settings.at_kafb2b_base_url)
-
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.settings.at_kafb2b_api_key}"}
 
@@ -40,7 +37,7 @@ class AtKafb2bClient:
         아래 엔드포인트 경로("/auction-prices")와 파라미터명은 참고용 기본값이다.
         실제 계약된 API 스펙에 맞게 조정해서 사용한다.
         """
-        if not self._ready():
+        if not self.settings.at_kafb2b_ready():
             raise RuntimeError(
                 "AT_KAFB2B_API_KEY / AT_KAFB2B_BASE_URL 환경변수가 설정되지 않았습니다."
             )

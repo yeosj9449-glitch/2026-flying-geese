@@ -86,6 +86,9 @@ class Settings:
     def kamis_ready(self) -> bool:
         return bool(self.kamis_cert_key and self.kamis_cert_id)
 
+    def at_kafb2b_ready(self) -> bool:
+        return bool(self.at_kafb2b_api_key and self.at_kafb2b_base_url)
+
     def naver_datalab_ready(self) -> bool:
         return bool(self.naver_datalab_client_id and self.naver_datalab_client_secret)
 

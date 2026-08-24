@@ -4,3 +4,10 @@ __pycache__/
 .pytest_cache/
 .env
 output/*.xlsx
+
+# 실전 파이프라인의 실 데이터(공급처/경쟁상품 조사 결과, KAMIS 코드, 송장)는
+# 운영자별 민감 정보라 커밋하지 않는다 - *.example.* 템플릿만 버전관리한다.
+data/live/*.json
+data/live/*.csv
+!data/live/*.example.json
+!data/live/*.example.csv

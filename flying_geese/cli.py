@@ -1,18 +1,32 @@
-"""CLI 진입점: python -m flying_geese.cli run"""
+"""CLI 진입점: python -m flying_geese.cli run | run-live"""
 from __future__ import annotations
 
 import argparse
+import sys
 
 from flying_geese.pipeline import run_demo_pipeline
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="농수산물 위탁판매 자동화 파이프라인")
-    parser.add_argument("command", choices=["run"], help="실행할 명령")
+    parser.add_argument(
+        "command",
+        choices=["run", "run-live"],
+        help="run: data/sample 기반 데모, run-live: 실 API 연동 (사전 설정 필요, README 참고)",
+    )
     args = parser.parse_args()
 
     if args.command == "run":
         report = run_demo_pipeline()
+        _print_report(report)
+    elif args.command == "run-live":
+        from flying_geese.live_pipeline import run_live_pipeline
+
+        try:
+            report = run_live_pipeline()
+        except (RuntimeError, FileNotFoundError) as exc:
+            print(f"실전 파이프라인 실행 불가: {exc}", file=sys.stderr)
+            raise SystemExit(1) from exc
         _print_report(report)
 
 

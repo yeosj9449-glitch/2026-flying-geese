@@ -1,0 +1,11 @@
+[
+  {
+    "supplier_id": "TODO_거래처코드",
+    "supplier_name": "TODO_공급처명",
+    "region": "TODO_지역",
+    "fulfillment_rate": 0.0,
+    "avg_delivery_hours": 0.0,
+    "return_rate": 0.0,
+    "has_e_tracking": false
+  }
+]
