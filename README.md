@@ -103,6 +103,18 @@ malformed이면 그 배치 전체가 예외로 죽어, **그날 들어온 다른
 주문 한 건만 로그를 남기고 건너뛰도록 수정, 순수 파싱 로직 단위 테스트를
 추가했습니다.
 
+### 신규 추가: aT 온라인도매시장(KAFB2B) 클라이언트
+
+마스터 기획서 1단계에 명시된 "aT 온라인도매시장(KAFB2B)" 연동은 `Settings`에
+`AT_KAFB2B_API_KEY`/`AT_KAFB2B_BASE_URL`이 이미 정의돼 있었는데도 정작 이를
+사용하는 클라이언트 모듈이 없었습니다(KAMIS는 있는데 KAFB2B만 빠진 상태).
+`flying_geese/stage1_calendar/at_kafb2b_client.py`를 추가했습니다. KAFB2B는
+KAMIS와 달리 널리 공개된 표준 스펙이 없고 이용기관별 계약을 통해 API 문서를
+받는 구조라, 엔드포인트/파라미터명은 참고용 기본값이며 실제 연동 시 계약된
+스펙에 맞게 조정이 필요합니다 — 다만 KamisClient/commerce_api.py 수정에서
+확인한 "행 하나의 결측 필드가 배치 전체를 죽이면 안 된다"는 안전장치는 처음부터
+반영해뒀습니다.
+
 ## 빠른 시작 (API 키 없이 샘플 데이터로 전체 흐름 검증)
 
 ```bash
@@ -128,6 +140,7 @@ pytest
 `.env.example`을 `.env`로 복사한 뒤 아래 값을 채우면 각 클라이언트가 실 API를 호출합니다.
 
 - `KAMIS_CERT_KEY` / `KAMIS_CERT_ID`: KAMIS 오픈API (`stage1_calendar/kamis_client.py`)
+- `AT_KAFB2B_API_KEY` / `AT_KAFB2B_BASE_URL`: aT 온라인도매시장 경락가 (`stage1_calendar/at_kafb2b_client.py`, 계약된 API 스펙에 맞게 엔드포인트/파라미터명 조정 필요)
 - `NAVER_DATALAB_CLIENT_ID` / `SECRET`: 네이버 데이터랩 검색어트렌드 (`stage2_blue_ocean/naver_datalab.py`)
 - `NAVER_SEARCHAD_API_KEY` / `SECRET_KEY` / `CUSTOMER_ID`: 네이버 검색광고 연관키워드 (`stage2_blue_ocean/naver_searchad.py`)
 - `COMMERCE_API_BASE_URL` / `COMMERCE_API_KEY`: 자사몰/커머스 플랫폼 주문 연동 (`stage5_automation/commerce_api.py`)
