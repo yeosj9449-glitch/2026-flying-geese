@@ -29,11 +29,19 @@ def dispatch_orders(
     tracking_map: dict[str, str],
     client: CommerceClient,
 ) -> tuple[list[OrderLine], list[str]]:
-    """송장 번호가 수집된 주문에 대해 발송 처리 API를 호출하고 상태를 갱신한다."""
+    """송장 번호가 수집된 주문에 대해 발송 처리 API를 호출하고 상태를 갱신한다.
+
+    이미 NEW 상태가 아닌 주문(이미 발송 처리됐거나 취소된 건)은 재처리하지
+    않는다. 송장 CSV가 누적/재업로드되는 운영 환경에서 이 가드가 없으면
+    이미 발송 처리된 주문에 대해 발송 API가 다시 호출되어 고객에게 중복
+    발송 알림이 갈 수 있다.
+    """
     dispatched: list[OrderLine] = []
     missing: list[str] = []
 
     for order in orders:
+        if order.status != OrderStatus.NEW:
+            continue
         tracking_number = tracking_map.get(order.order_id)
         if not tracking_number:
             missing.append(order.order_id)
