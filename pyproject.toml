@@ -1,0 +1,20 @@
+[project]
+name = "flying-geese"
+version = "0.1.0"
+description = "농수산물 위탁판매 상품 선정 및 운영 자동화 시스템"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.31",
+    "openpyxl>=3.1",
+    "python-dotenv>=1.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flying_geese*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

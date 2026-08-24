@@ -1,0 +1,13 @@
+[
+  {"product_code": "P001", "product_name": "사과", "market": "가락도매시장", "trade_date": "2025-08-20", "price_per_unit": 3500},
+  {"product_code": "P001", "product_name": "사과", "market": "가락도매시장", "trade_date": "2026-07-21", "price_per_unit": 3700},
+  {"product_code": "P001", "product_name": "사과", "market": "가락도매시장", "trade_date": "2026-08-20", "price_per_unit": 3800},
+
+  {"product_code": "P002", "product_name": "배추", "market": "가락도매시장", "trade_date": "2025-08-20", "price_per_unit": 2000},
+  {"product_code": "P002", "product_name": "배추", "market": "가락도매시장", "trade_date": "2026-07-21", "price_per_unit": 2600},
+  {"product_code": "P002", "product_name": "배추", "market": "가락도매시장", "trade_date": "2026-08-20", "price_per_unit": 2800},
+
+  {"product_code": "P003", "product_name": "고구마", "market": "가락도매시장", "trade_date": "2025-08-20", "price_per_unit": 4000},
+  {"product_code": "P003", "product_name": "고구마", "market": "가락도매시장", "trade_date": "2026-07-21", "price_per_unit": 4100},
+  {"product_code": "P003", "product_name": "고구마", "market": "가락도매시장", "trade_date": "2026-08-20", "price_per_unit": 4200}
+]

@@ -1,0 +1,46 @@
+[
+  {
+    "orderId": "ORD-0001",
+    "productName": "고구마",
+    "varietyKeyword": "베니하르카 호박고구마",
+    "quantity": 2,
+    "unitPrice": 32000,
+    "supplierId": "S005",
+    "buyerName": "김민준",
+    "buyerAddress": "서울특별시 마포구 월드컵로 10길 5",
+    "buyerPhone": "010-1234-5678"
+  },
+  {
+    "orderId": "ORD-0002",
+    "productName": "사과",
+    "varietyKeyword": "감홍사과",
+    "quantity": 1,
+    "unitPrice": 59000,
+    "supplierId": "S001",
+    "buyerName": "이서연",
+    "buyerAddress": "경기도 성남시 분당구 판교로 200",
+    "buyerPhone": "010-2345-6789"
+  },
+  {
+    "orderId": "ORD-0003",
+    "productName": "고구마",
+    "varietyKeyword": "베니하르카 호박고구마",
+    "quantity": 3,
+    "unitPrice": 32000,
+    "supplierId": "S005",
+    "buyerName": "박지호",
+    "buyerAddress": "부산광역시 해운대구 센텀중앙로 30",
+    "buyerPhone": "010-3456-7890"
+  },
+  {
+    "orderId": "ORD-0004",
+    "productName": "사과",
+    "varietyKeyword": "홍로사과",
+    "quantity": 2,
+    "unitPrice": 29000,
+    "supplierId": "S001",
+    "buyerName": "최유진",
+    "buyerAddress": "대전광역시 유성구 대학로 99",
+    "buyerPhone": "010-4567-8901"
+  }
+]

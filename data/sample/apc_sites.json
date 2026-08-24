@@ -1,0 +1,23 @@
+[
+  {
+    "apc_id": "APC001",
+    "apc_name": "상주 스마트 APC",
+    "region": "경북 상주",
+    "is_smart_apc": true,
+    "top_products": ["감홍사과", "부사사과"]
+  },
+  {
+    "apc_id": "APC002",
+    "apc_name": "해남 스마트 APC",
+    "region": "전남 해남",
+    "is_smart_apc": true,
+    "top_products": ["베니하르카 호박고구마", "밤고구마"]
+  },
+  {
+    "apc_id": "APC003",
+    "apc_name": "평창 산지유통센터",
+    "region": "강원 평창",
+    "is_smart_apc": false,
+    "top_products": ["배추", "양배추"]
+  }
+]

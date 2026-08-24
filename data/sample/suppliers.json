@@ -1,0 +1,47 @@
+[
+  {
+    "supplier_id": "S001",
+    "supplier_name": "좋은농산 상주공판장",
+    "region": "경북 상주",
+    "fulfillment_rate": 0.98,
+    "avg_delivery_hours": 20,
+    "return_rate": 0.01,
+    "has_e_tracking": true
+  },
+  {
+    "supplier_id": "S002",
+    "supplier_name": "늦은배송농원",
+    "region": "전남 해남",
+    "fulfillment_rate": 0.90,
+    "avg_delivery_hours": 22,
+    "return_rate": 0.02,
+    "has_e_tracking": false
+  },
+  {
+    "supplier_id": "S003",
+    "supplier_name": "반품많은청과",
+    "region": "강원 평창",
+    "fulfillment_rate": 0.97,
+    "avg_delivery_hours": 18,
+    "return_rate": 0.05,
+    "has_e_tracking": false
+  },
+  {
+    "supplier_id": "S004",
+    "supplier_name": "배송느린산지",
+    "region": "충남 부여",
+    "fulfillment_rate": 0.96,
+    "avg_delivery_hours": 40,
+    "return_rate": 0.02,
+    "has_e_tracking": true
+  },
+  {
+    "supplier_id": "S005",
+    "supplier_name": "우수미래농장",
+    "region": "전남 해남",
+    "fulfillment_rate": 0.99,
+    "avg_delivery_hours": 15,
+    "return_rate": 0.005,
+    "has_e_tracking": true
+  }
+]
