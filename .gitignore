@@ -11,3 +11,7 @@ data/live/*.json
 data/live/*.csv
 !data/live/*.example.json
 !data/live/*.example.csv
+
+# 수동 리서치 상품 선정(product_selection.py)에 채워 넣는 실제 조사 값도 마찬가지.
+data/manual/*.json
+!data/manual/*.example.json

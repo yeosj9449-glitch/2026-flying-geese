@@ -1,4 +1,4 @@
-"""CLI 진입점: python -m flying_geese.cli run | run-live"""
+"""CLI 진입점: python -m flying_geese.cli run | run-live | select"""
 from __future__ import annotations
 
 import argparse
@@ -11,8 +11,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="농수산물 위탁판매 자동화 파이프라인")
     parser.add_argument(
         "command",
-        choices=["run", "run-live"],
-        help="run: data/sample 기반 데모, run-live: 실 API 연동 (사전 설정 필요, README 참고)",
+        choices=["run", "run-live", "select"],
+        help=(
+            "run: data/sample 기반 데모(1~5단계), "
+            "run-live: 실 API 연동(1~5단계, 사전 설정 필요), "
+            "select: API 키 없이 data/manual/ 수동 리서치 데이터로 1~2단계(상품 선정)만 실행"
+        ),
     )
     args = parser.parse_args()
 
@@ -28,9 +32,18 @@ def main() -> None:
             print(f"실전 파이프라인 실행 불가: {exc}", file=sys.stderr)
             raise SystemExit(1) from exc
         _print_report(report)
+    elif args.command == "select":
+        from flying_geese.product_selection import run_product_selection
+
+        try:
+            report = run_product_selection()
+        except FileNotFoundError as exc:
+            print(f"상품 선정 실행 불가: {exc}", file=sys.stderr)
+            raise SystemExit(1) from exc
+        _print_product_selection(report)
 
 
-def _print_report(report) -> None:
+def _print_product_selection(report) -> None:
     print(f"=== 1단계: {report.target_month}월 제철 캘린더 & 폭등 제외 후 통과 품목 ===")
     for item in report.passing_price_items:
         in_season = "제철" if item.product_name in report.seasonal_matched_categories else "비수기"
@@ -50,6 +63,10 @@ def _print_report(report) -> None:
         )
     if report.blue_ocean_missing_competitor_data:
         print(f"  ⚠ 경쟁상품 데이터 없음(스코어링 제외): {report.blue_ocean_missing_competitor_data}")
+
+
+def _print_report(report) -> None:
+    _print_product_selection(report)
 
     print("\n=== 3단계: 공급처 신뢰도 평가 ===")
     for evaluation in report.supplier_evaluations:

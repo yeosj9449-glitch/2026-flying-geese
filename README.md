@@ -135,6 +135,31 @@ pytest
 가격 변동성 필터, 블루오션 스코어링, 공급처 리스크 필터, 마진/현금흐름
 시뮬레이터, 발주서 엑셀 생성, 배송 처리, 전체 파이프라인 통합까지 포함합니다.
 
+## API 키 발급 전: 수동 리서치로 상품 선정만 먼저 실행
+
+KAMIS/네이버 API 키를 아직 발급받지 못했어도, 1~2단계("상품 선정" - 제철
+검증 + 가격 변동성 필터 + 블루오션 스코어링)만큼은 운영자가 직접 조사한 실제
+숫자로 실행할 수 있습니다. KAMIS(www.kamis.or.kr)와 네이버 검색광고/데이터랩
+관리시스템은 로그인만 하면 **API 키 없이 화면에서 직접 조회**가 가능하므로,
+그 값을 그대로 입력하면 됩니다. 3~5단계(공급처 필터, 마진 시뮬레이터, 발송
+자동화)는 공급처 데이터/커머스 API가 필요해 포함되지 않습니다.
+
+```bash
+cp data/manual/price_records.example.json data/manual/price_records.json
+# search_volumes.json / competitor_counts.json / search_trends.json은 선택 -
+# 없으면 해당 정보 없이 안전하게 진행됩니다(블루오션 스코어링만 비어있게 됨).
+python -m flying_geese.cli select
+```
+
+- `data/manual/price_records.json`: KAMIS에서 조회한 대표 품목의 최근가/약 30일 전/약 365일 전 가격 3개 시점 (`product_code`는 실제 KAMIS 코드가 아니어도 되고, 같은 품목끼리 묶이도록 `product_name`과 동일하게 쓰면 됩니다) - **필수**
+- `data/manual/search_volumes.json`: 네이버 검색광고 키워드 도구에서 조회한 세부 품종별 월간 검색량 - 없으면 해당 품종은 블루오션 후보에서 빠집니다
+- `data/manual/competitor_counts.json`: 쿠팡/스마트스토어에서 직접 검색해 눈으로 센 등록 상품 수 - 없으면 "데이터 누락"으로 보고되고 스코어링에서 제외됩니다
+- `data/manual/search_trends.json`: 네이버 데이터랩에서 비교한 검색 모멘텀 (선택, 없으면 중립값 1.0)
+
+제철 캘린더/품종 매핑은 `data/sample/seasonal_calendar.json`, `variety_map.json`
+(데모용 가짜 데이터가 아니라 실제 참고 데이터)을 그대로 재사용합니다.
+`data/manual/*.json`(예시 파일 제외)은 `.gitignore` 처리돼 커밋되지 않습니다.
+
 ## 실전 파이프라인 (실 API 연동)
 
 `flying_geese/live_pipeline.py`의 `run_live_pipeline()` (또는
@@ -185,7 +210,8 @@ flying_geese/
   models.py             # 단계 공용 데이터 모델
   pipeline.py            # 데모 5단계 오케스트레이터 (data/sample 사용)
   live_pipeline.py        # 실전 5단계 오케스트레이터 (실 API 연동)
-  cli.py                 # python -m flying_geese.cli run | run-live
+  product_selection.py    # API 키 없이 1~2단계(상품 선정)만 실행 (data/manual 사용)
+  cli.py                 # python -m flying_geese.cli run | run-live | select
   stage1_calendar/        # 제철 캘린더, KAMIS/aT KAFB2B, 가격 변동성, APC 연동
   stage2_blue_ocean/      # 네이버 데이터랩/검색광고, 품종 확장, 블루오션 스코어링
   stage3_supplier/        # 공급처 신뢰 점수, CS 리스크 필터
@@ -193,5 +219,6 @@ flying_geese/
   stage5_automation/      # 주문 수집, 발주서 엑셀, 배송 처리
 data/sample/             # 데모/테스트용 샘플 데이터
 data/live/               # 실전 파이프라인용 로컬 설정 (.example.json/csv만 버전관리)
+data/manual/             # 수동 리서치 상품 선정용 로컬 설정 (.example.json만 버전관리)
 tests/                    # pytest 단위/통합 테스트
 ```

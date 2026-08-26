@@ -1,0 +1,24 @@
+[
+  {
+    "_설명": "product_code는 실제 KAMIS 코드일 필요 없음 - product_name과 동일한 값을 쓰면 됨(같은 품목끼리 묶어 전월/전년 대비를 계산하는 용도일 뿐). 아래는 예시이며 실제 조회한 3개 시점(최근/약 30일 전/약 365일 전) 가격으로 교체해서 쓴다.",
+    "product_code": "사과",
+    "product_name": "사과",
+    "market": "가락도매시장",
+    "trade_date": "2025-08-20",
+    "price_per_unit": 3500
+  },
+  {
+    "product_code": "사과",
+    "product_name": "사과",
+    "market": "가락도매시장",
+    "trade_date": "2026-07-21",
+    "price_per_unit": 3700
+  },
+  {
+    "product_code": "사과",
+    "product_name": "사과",
+    "market": "가락도매시장",
+    "trade_date": "2026-08-20",
+    "price_per_unit": 3800
+  }
+]
