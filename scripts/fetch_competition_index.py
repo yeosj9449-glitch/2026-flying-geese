@@ -22,6 +22,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -142,6 +143,8 @@ def main() -> None:
         "--delay", type=float, default=0.5, help="API 호출 간 대기 시간(초, 기본 0.5)"
     )
     args = parser.parse_args()
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
     input_path = Path(args.input)
     if not input_path.exists():
