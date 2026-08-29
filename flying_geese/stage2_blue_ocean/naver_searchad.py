@@ -1,6 +1,6 @@
 """네이버 검색광고(SearchAd) API - 연관키워드/월간 검색량 조회.
 
-https://api.naver.com/keywordstool
+https://api.searchad.naver.com/keywordstool
 서명은 timestamp + method + uri 를 secret key로 HMAC-SHA256 후 base64 인코딩한다.
 NAVER_SEARCHAD_API_KEY / NAVER_SEARCHAD_SECRET_KEY / NAVER_SEARCHAD_CUSTOMER_ID 필요.
 """
@@ -15,7 +15,7 @@ import requests
 
 from flying_geese.config import Settings
 
-SEARCHAD_BASE_URL = "https://api.naver.com"
+SEARCHAD_BASE_URL = "https://api.searchad.naver.com"
 KEYWORDS_TOOL_URI = "/keywordstool"
 
 
