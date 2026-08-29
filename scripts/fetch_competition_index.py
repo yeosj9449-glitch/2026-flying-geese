@@ -12,6 +12,16 @@ NAVER_SEARCHAD_API_KEY / NAVER_SEARCHAD_SECRET_KEY / NAVER_SEARCHAD_CUSTOMER_ID
 네이버 검색광고 keywordstool API가 제공하는 값을 그대로 사용한다 — 쿠팡/스마트스토어는
 키워드별 상품 등록 수를 제공하는 공식 API가 없어(marketplace_rank.py 참고) 이
 스크립트의 대상에서 제외했다.
+
+[2026-08 기준] 원래는 compIdx를 검색량과 결합해 "블루오션 점수(검색량÷등록상품수)"를
+계산하려 했으나, 등록상품수를 제공하던 네이버쇼핑 검색 API(/v1/search/shop.json)가
+2026년 7월 31일 공식 종료되어 공식 대체 API가 없다. 따라서 실제 등록상품수 기반 경쟁
+확인은 자동화할 수 없고, 이 스크립트의 compIdx는 1차 스크리닝용 참고 지표로만 사용한다.
+
+/keywordstool 엔드포인트는 한 번에 최대 5개 키워드(hintKeywords)까지 조회 가능하며
+초당 호출 제한이 있으므로 요청 사이에 짧은 딜레이(--delay)를 둔다. compIdx는
+'낮음'/'중간'/'높음' 3단계 문자열로 반환되므로, 정렬·필터링이 쉽도록
+competition_index_score(1/2/3)를 추가로 계산해 함께 저장한다.
 """
 from __future__ import annotations
 
@@ -43,6 +53,7 @@ CANDIDATE_KEYWORD_COLUMNS = [
 ]
 BATCH_SIZE = 5  # keywordstool API는 hintKeywords를 5개까지 허용
 PAREN_PATTERN = re.compile(r"\([^)]*\)")
+COMPETITION_INDEX_SCORE = {"낮음": 1, "중간": 2, "높음": 3}  # 정렬/필터링용 서열화
 
 
 def _normalize(keyword: str) -> str:
@@ -113,10 +124,12 @@ def build_rows(raw_keywords: list[str], stats: dict[str, dict]) -> list[dict]:
                     "monthly_mobile_search": "",
                     "monthly_search_volume": "",
                     "competition_index": "",
+                    "competition_index_score": "",
                     "note": "API 응답에 없음",
                 }
             )
             continue
+        comp_idx = row.get("compIdx", "")
         rows.append(
             {
                 "keyword": raw,
@@ -124,7 +137,8 @@ def build_rows(raw_keywords: list[str], stats: dict[str, dict]) -> list[dict]:
                 "monthly_pc_search": row.get("monthlyPcQcCnt", ""),
                 "monthly_mobile_search": row.get("monthlyMobileQcCnt", ""),
                 "monthly_search_volume": NaverSearchAdClient.monthly_search_volume(row),
-                "competition_index": row.get("compIdx", ""),
+                "competition_index": comp_idx,
+                "competition_index_score": COMPETITION_INDEX_SCORE.get(comp_idx, ""),
                 "note": "" if query == raw else "괄호 제거 후 검색",
             }
         )
