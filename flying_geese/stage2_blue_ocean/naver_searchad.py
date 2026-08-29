@@ -57,7 +57,10 @@ class NaverSearchAdClient:
             headers=headers,
             timeout=self.timeout,
         )
-        response.raise_for_status()
+        if not response.ok:
+            raise RuntimeError(
+                f"네이버 검색광고 API 오류 {response.status_code}: {response.text}"
+            )
         return response.json().get("keywordList", [])
 
     @staticmethod
