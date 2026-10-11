@@ -1,0 +1,520 @@
+<style>
+/* 레이아웃: 결산 머리(제목·요약·구성원 전환) → 핵심 지표 10개 → 알림·구성원 → 지출 통제 → 투자 확대 → 목표·현금흐름 */
+.hh { --hh-sans: var(--font-anthropic-sans), "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      --hh-num: var(--font-anthropic-serif), "Apple SD Gothic Neo", "Malgun Gothic", serif;
+      font-family: var(--hh-sans); color: var(--color-fg); display: grid; gap: var(--cds-gap-xl); }
+.hh * { box-sizing: border-box; }
+.hh-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--cds-gap-md); }
+.hh-head > div { min-width: 0; }
+.hh-eyebrow { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .02em; }
+.hh-title { margin: var(--cds-gap-xs) 0 0; font-family: var(--hh-num); font-weight: 400; font-size: var(--cds-font-size-title); text-wrap: balance; }
+.hh-take { margin: var(--cds-gap-xs) 0 0; font-size: var(--cds-font-size-body); color: var(--color-fg-muted); max-width: 62ch; }
+.hh-views { display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--color-border-line); border-radius: 999px; background: var(--color-panel); }
+.hh-views button { font: inherit; font-size: var(--cds-font-size-body); border: 0; background: transparent; color: var(--color-fg-muted);
+      padding: var(--cds-pad-xs) var(--cds-pad-md); border-radius: 999px; cursor: pointer; }
+.hh-views button[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
+.hh-views button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.hh-sec { display: grid; gap: var(--cds-gap-md); }
+.hh-sec > h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+.hh-sec > h2 small { font-weight: 400; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); margin-left: var(--cds-gap-sm); }
+.hh-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr)); gap: var(--cds-gap-sm); }
+.hh-kpi { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius);
+      padding: var(--cds-pad-md); display: grid; gap: var(--cds-gap-xs); align-content: start; min-width: 0; }
+.hh-kpi .hh-tag { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hh-kpi .hh-label { margin: 0; font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.hh-kpi .hh-value { margin: 0; font-family: var(--hh-num); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.15;
+      font-variant-numeric: tabular-nums; min-height: 1.2em; }
+.hh-kpi .hh-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.hh-pill { justify-self: start; display: inline-flex; align-items: center; gap: .35em; font-size: var(--cds-font-size-caption);
+      padding: 1px var(--cds-pad-sm); border-radius: 999px; background: color-mix(in srgb, var(--color-fg) 7%, transparent); color: var(--color-fg-muted); }
+.hh-pill::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: currentColor; flex: none; }
+.hh-pill[data-tone="ok"] { color: var(--color-ok); background: color-mix(in srgb, var(--color-ok) 12%, transparent); }
+.hh-pill[data-tone="warn"] { color: var(--color-warn); background: color-mix(in srgb, var(--color-warn) 14%, transparent); }
+.hh-pill[data-tone="bad"] { color: var(--color-bad); background: color-mix(in srgb, var(--color-bad) 12%, transparent); }
+.hh-pill:empty { display: none; }
+.hh-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+.hh-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius);
+      padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); align-content: start; min-width: 0; }
+.hh-card h3 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+.hh-card .hh-sub { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hh-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hh-legend span { display: inline-flex; align-items: center; gap: .4em; }
+.hh-legend i { width: .7rem; height: .7rem; border-radius: 2px; display: inline-block; }
+.hh-chart { position: relative; min-height: 240px; }
+.hh-chart svg { display: block; overflow: visible; }
+.hh-chart text { fill: var(--color-fg-muted); font-size: 11px; font-family: var(--hh-sans); font-variant-numeric: tabular-nums; }
+.hh-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border);
+      border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm);
+      font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 2; font-variant-numeric: tabular-nums; }
+.hh-tip .hh-tip-h { color: var(--cds-text-secondary); margin-bottom: 2px; }
+.hh-tip .hh-tip-r { display: flex; align-items: center; gap: .45em; }
+.hh-tip .hh-tip-r i { width: .55rem; height: .55rem; border-radius: 2px; display: inline-block; }
+.hh-tip .hh-tip-r b { margin-left: auto; padding-left: var(--cds-gap-md); font-weight: 500; }
+.hh-alerts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--cds-gap-xs); min-height: 6rem; }
+.hh-alerts li { display: grid; grid-template-columns: .5rem 1fr; gap: var(--cds-gap-sm); align-items: baseline; font-size: var(--cds-font-size-body);
+      padding: var(--cds-pad-xs) 0; border-bottom: 1px solid var(--color-border-line); }
+.hh-alerts li:last-child { border-bottom: 0; }
+.hh-alerts li::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--cds-chart-muted); transform: translateY(-1px); }
+.hh-alerts li[data-tone="bad"]::before { background: var(--color-bad); }
+.hh-alerts li[data-tone="warn"]::before { background: var(--color-warn); }
+.hh-alerts li[data-tone="ok"]::before { background: var(--color-ok); }
+.hh-table-wrap { overflow-x: auto; }
+.hh-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+.hh-table th { text-align: right; font-weight: 500; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted);
+      padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.hh-table td { text-align: right; padding: var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.hh-table th:first-child, .hh-table td:first-child { text-align: left; padding-left: 0; }
+.hh-table tr:last-child td { border-bottom: 0; }
+.hh-table .hh-left { text-align: left; }
+.hh-bars { display: grid; gap: var(--cds-gap-sm); min-height: 240px; align-content: start; }
+.hh-bars h4 { margin: var(--cds-gap-sm) 0 0; font-size: var(--cds-font-size-caption); font-weight: 500; color: var(--color-fg-muted); }
+.hh-brow { display: grid; grid-template-columns: minmax(4.5rem, 7rem) 1fr auto; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-body); }
+.hh-brow > span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hh-btrack { position: relative; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--color-fg) 6%, transparent); }
+.hh-bfill { position: absolute; inset: 0 auto 0 0; border-radius: 6px; }
+.hh-bmark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-fg); border-radius: 1px; }
+.hh-band { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--color-fg) 9%, transparent); }
+.hh-bval { min-width: 7.5rem; text-align: right; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hh-bval b { color: var(--color-fg); font-weight: 500; }
+.hh-prog { display: inline-grid; grid-template-columns: 4.5rem auto; gap: var(--cds-gap-sm); align-items: center; }
+.hh-prog .hh-btrack { height: 8px; }
+.hh-foot { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 80ch; }
+.hh-fail { display: flex; align-items: center; justify-content: center; gap: .5em; min-height: inherit; height: 100%;
+      font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.hh-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+@media (max-width: 34rem) { .hh-narrow-hide { display: none; } .hh-bval { min-width: 5.5rem; } }
+</style>
+
+<div class="hh">
+  <header class="hh-head" id="top">
+    <div>
+      <p class="hh-eyebrow">2026년 9월 월간 결산 · 가상의 3인 가구 샘플 데이터</p>
+      <h1 class="hh-title">우리집 주식회사</h1>
+      <p class="hh-take dash-skeleton" id="takeaway" data-source="alerts">—</p>
+    </div>
+    <div class="hh-views" role="group" aria-label="구성원 보기">
+      <button type="button" data-view="전체">전체</button>
+      <button type="button" data-view="본인">본인</button>
+      <button type="button" data-view="배우자">배우자</button>
+      <button type="button" data-view="공동">공동</button>
+    </div>
+  </header>
+
+  <section class="hh-sec" id="kpi">
+    <h2>핵심 지표 <small>9월 결산 기준</small></h2>
+    <div class="hh-kpis">
+      <article class="hh-kpi" data-kpi="net"><span class="hh-tag">재무 건전성</span><p class="hh-label">순자산</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="saving"><span class="hh-tag">지출 통제</span><p class="hh-label">저축률</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="budget"><span class="hh-tag">지출 통제</span><p class="hh-label">소비 예산 집행률</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="invest_paid"><span class="hh-tag">투자 확대</span><p class="hh-label">월 투자 납입액</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="invest_assets"><span class="hh-tag">투자 확대</span><p class="hh-label">투자+연금 자산</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="emergency"><span class="hh-tag">지출 통제</span><p class="hh-label">비상자금</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="debt_ratio"><span class="hh-tag">재무 건전성</span><p class="hh-label">부채비율</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="dsr"><span class="hh-tag">재무 건전성</span><p class="hh-label">DSR</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="goals"><span class="hh-tag">목표</span><p class="hh-label">목표 달성률</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+      <article class="hh-kpi" data-kpi="fi"><span class="hh-tag">투자 확대</span><p class="hh-label">재무자립도</p><p class="hh-value dash-skeleton" data-source="kpis" data-field="value">—</p><p class="hh-note" data-source="kpis" data-field="note"></p><span class="hh-pill" data-source="kpis" data-field="status"></span></article>
+    </div>
+  </section>
+
+  <section class="hh-grid" id="watch">
+    <article class="hh-card" id="alerts-card">
+      <h3>이번 달 알림</h3>
+      <p class="hh-sub">예산·저축·투자·비상자금·일정·목표·보험을 자동 점검한 결과</p>
+      <ul class="hh-alerts dash-skeleton" id="alerts" data-source="alerts"></ul>
+    </article>
+    <article class="hh-card" id="members-card">
+      <h3>구성원별 순자산</h3>
+      <p class="hh-sub">9월 말 잔액 · 보기 선택과 관계없이 세 구성원 모두 표시</p>
+      <div class="hh-table-wrap">
+        <table class="hh-table" id="members" data-source="members" data-row-key="member">
+          <thead><tr><th data-field="member">구성원</th><th data-field="assets">자산</th><th data-field="debt">부채</th><th data-field="net">순자산</th><th data-field="invest" class="hh-narrow-hide">투자+연금</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
+
+  <section class="hh-sec" id="spend">
+    <h2>지출 통제</h2>
+    <div class="hh-grid">
+      <article class="hh-card" id="monthly-card">
+        <h3>월별 소득 · 소비 · 투자 납입</h3>
+        <p class="hh-sub">최근 12개월 · 저축·투자·원금상환은 소비에서 제외</p>
+        <div class="hh-legend" id="monthly-legend"></div>
+        <div class="hh-chart dash-skeleton" id="monthly" data-source="monthly"></div>
+      </article>
+      <article class="hh-card" id="budget-card">
+        <h3>예산 대비 실적</h3>
+        <p class="hh-sub" id="budget-sub">집행률이 높은 순 · 검은 선이 예산</p>
+        <div class="hh-bars dash-skeleton" id="budget" data-source="budget"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="hh-sec" id="invest">
+    <h2>투자 확대</h2>
+    <div class="hh-grid">
+      <article class="hh-card" id="trend-card">
+        <h3>순자산과 투자+연금 자산</h3>
+        <p class="hh-sub">월말 스냅샷 기준 · 최근 12개월</p>
+        <div class="hh-chart dash-skeleton" id="trend" data-source="trend"></div>
+      </article>
+      <article class="hh-card" id="alloc-card">
+        <h3>자산배분: 목표 vs 현재</h3>
+        <p class="hh-sub">막대가 현재 비중, 검은 선이 목표, 회색 띠가 허용 범위(±5%p)</p>
+        <div class="hh-bars dash-skeleton" id="alloc" data-source="allocation"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="hh-sec" id="goals-sec">
+    <h2>목표 · 현금흐름</h2>
+    <div class="hh-grid">
+      <article class="hh-card" id="goals-card">
+        <h3>재무 목표 진척</h3>
+        <p class="hh-sub">막대가 진척률, 검은 선이 오늘 기준 계획 진척률 · 가계 전체 기준</p>
+        <div class="hh-table-wrap">
+          <table class="hh-table" id="goals" data-source="goals" data-row-key="goal">
+            <thead><tr><th data-field="goal">목표</th><th data-field="owner" class="hh-narrow-hide">담당</th><th data-field="progress" class="hh-left">진척률</th><th data-field="status" class="hh-left">상태</th><th data-field="monthly_needed">필요 월적립</th><th data-field="due" class="hh-narrow-hide">목표일</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="hh-card" id="cash-card">
+        <h3>향후 6개월 예상 잔고</h3>
+        <p class="hh-sub">정기 유입·유출 평균 + 일정(보험 갱신·명절·성과급 등) 반영 · 점선이 최소 유지잔고</p>
+        <div class="hh-chart dash-skeleton" id="cash" data-source="cashflow"></div>
+      </article>
+    </div>
+  </section>
+
+  <p class="hh-foot">스프레드시트 MVP(우리집_자산관리_샘플.xlsx)를 재계산한 값과 같은 수치입니다. 구성원 보기는 손익·예산 실적·재무상태·투자 비중을 해당 구성원 기준으로 바꿉니다. 공동 보기는 직접 소득이 없어 저축률을 계산하지 않으며, 리밸런싱 알림은 전체 보기에서만 표시됩니다.</p>
+</div>
+
+<script>
+(() => {
+  const VIEWS = ['전체', '본인', '배우자', '공동'];
+  const MIN_CASH = 3000000;   // 설정 시트의 최소 유지잔고
+  const BAND = 0.05;          // 설정 시트의 리밸런싱 밴드
+  const nf = new Intl.NumberFormat('ko-KR');
+  const short = (x) => {
+    const a = Math.abs(x), s = x < 0 ? '-' : '';
+    if (a >= 1e8) return s + (a / 1e8).toFixed(2).replace(/\.?0+$/, '') + '억';
+    if (a >= 1e4) return s + nf.format(Math.round(a / 1e4)) + '만';
+    return s + nf.format(Math.round(a));
+  };
+  const pct = (x, d = 1) => (x * 100).toFixed(d) + '%';
+  const tone = (s) => !s ? 'none'
+    : /🔴|❌|초과|부족|공백/.test(s) ? 'bad'
+    : /⚠|⚖|미달|지연|주의|리밸런싱|감소/.test(s) ? 'warn'
+    : /✅|🎉|달성|양호|순항|정상|증가|적정/.test(s) ? 'ok' : 'none';
+  const clean = (s) => String(s ?? '').replace(/^[^0-9A-Za-z가-힣+\-]+/u, '').replace(/^-\s*/, '').trim();
+  const monthLabel = (m) => (m.slice(5) === '01' ? m.slice(2, 4) + '년 ' : '') + Number(m.slice(5)) + '월';
+  const view = () => (VIEWS.includes(dash.params().view) ? dash.params().view : '전체');
+
+  const buttons = [...document.querySelectorAll('.hh-views button')];
+  buttons.forEach((b) => b.addEventListener('click', () => dash.setParams({ view: b.dataset.view })));
+
+  // 데이터셋 상태: ok면 행을, 아니면 null (실패면 상자에 한 줄 표시)
+  const rowsOf = (id, box) => {
+    const d = dash.data(id);
+    if (d.status === 'ok') { box && box.classList.remove('dash-skeleton'); return d.data; }
+    if (box && (d.status === 'error' || d.status === 'missing' || d.status === 'declined' || d.status === 'connect')) {
+      box.classList.remove('dash-skeleton');
+      const f = document.createElement('div'); f.className = 'hh-fail'; f.textContent = 'Failed to load';
+      box.replaceChildren(f);
+    }
+    return null;
+  };
+
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+  function tipFor(box) {
+    let t = box.querySelector('.hh-tip');
+    if (!t) { t = el('div', 'hh-tip'); t.hidden = true; box.appendChild(t); }
+    return {
+      show(x, y, head, lines) {
+        t.replaceChildren(el('div', 'hh-tip-h', head), ...lines.map(([color, name, value]) => {
+          const r = el('div', 'hh-tip-r'); const sw = el('i'); if (color) sw.style.background = color; else sw.style.display = 'none';
+          r.append(sw, el('span', null, name), el('b', null, value)); return r;
+        }));
+        t.hidden = false;
+        const w = t.offsetWidth, W = box.clientWidth;
+        t.style.left = Math.max(0, Math.min(W - w, x + 12)) + 'px';
+        t.style.top = Math.max(0, y - t.offsetHeight - 8) + 'px';
+      },
+      hide() { t.hidden = true; },
+    };
+  }
+
+  // 축 눈금 글자 폭을 실제로 재서 왼쪽 여백을 정한다
+  function measure(svg, labels) {
+    const g = svg.append('g');
+    const w = d3.max(labels, (s) => g.append('text').text(s).node().getComputedTextLength()) || 0;
+    g.remove();
+    return w;
+  }
+
+  function drawKpis(v) {
+    const rows = rowsOf('kpis');
+    document.querySelectorAll('.hh-kpi').forEach((card) => {
+      const k = card.dataset.kpi;
+      card.querySelectorAll('[data-source]').forEach((n) => n.setAttribute('data-where', `view=${v}&kpi=${k}`));
+      if (!rows) return;
+      const r = rows.find((x) => x.view === v && x.kpi === k);
+      const valueEl = card.querySelector('.hh-value');
+      valueEl.classList.remove('dash-skeleton');
+      if (!r) return;
+      const val = r.value;
+      valueEl.textContent = val == null ? '—'
+        : r.format === 'won' ? short(val)
+        : r.format === 'months' ? val.toFixed(1) + '개월'
+        : pct(val);
+      card.querySelector('.hh-note').textContent = r.note || '';
+      const pill = card.querySelector('.hh-pill');
+      pill.textContent = clean(r.status);
+      pill.dataset.tone = tone(r.status);
+    });
+  }
+
+  function drawAlerts(v) {
+    const box = document.getElementById('alerts');
+    const take = document.getElementById('takeaway');
+    const rows = rowsOf('alerts', box);
+    if (!rows) return;
+    take.classList.remove('dash-skeleton');
+    const mine = rows.filter((r) => r.view === v).sort((a, b) => a.order - b.order);
+    box.replaceChildren(...(mine.length ? mine : [{ text: '✅ 이상 없음, 이번 달도 잘 운영되었습니다' }]).map((r) => {
+      const li = el('li', null, clean(r.text)); li.dataset.tone = tone(r.text); return li;
+    }));
+    const urgent = mine.filter((r) => tone(r.text) === 'bad').length;
+    take.textContent = mine.length
+      ? `${v} 기준 알림 ${mine.length}건${urgent ? `, 그중 ${urgent}건은 즉시 조치` : ''}. 가장 먼저 볼 것: ${clean(mine[0].text)}.`
+      : `${v} 기준 이번 달 알림이 없습니다.`;
+  }
+
+  function drawMembers() {
+    const table = document.getElementById('members');
+    const rows = rowsOf('members');
+    if (!rows) return;
+    const tb = table.tBodies[0];
+    tb.replaceChildren(...rows.map((r) => {
+      const tr = el('tr');
+      tr.append(el('td', null, r.member), el('td', null, short(r.assets)), el('td', null, r.debt ? short(r.debt) : '-'), el('td', null, short(r.net)), el('td', 'hh-narrow-hide', short(r.invest)));
+      return tr;
+    }));
+  }
+
+  function drawMonthly(v) {
+    const box = document.getElementById('monthly');
+    const all = rowsOf('monthly', box);
+    if (!all) return;
+    const rows = all.filter((r) => r.view === v);
+    const series = [['income', '소득', dash.colors[0]], ['consumption', '소비지출', dash.colors[1]], ['invest', '투자 납입', dash.colors[2]]];
+    document.getElementById('monthly-legend').replaceChildren(...series.map(([, name, c]) => { const s = el('span'); const i = el('i'); i.style.background = c; s.append(i, name); return s; }));
+    box.replaceChildren();
+    const W = Math.max(280, box.clientWidth), H = 240, mb = 24, mt = 8;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '월별 소득, 소비, 투자 납입');
+    const max = d3.max(rows, (r) => Math.max(r.income, r.consumption, r.invest)) || 1;
+    const y = d3.scaleLinear([0, max], [H - mb, mt]).nice();
+    const ticks = y.ticks(4);
+    const ml = measure(svg, ticks.map(short)) + 8;
+    const x0 = d3.scaleBand(rows.map((r) => r.month), [ml, W]).paddingInner(0.22).paddingOuter(0.05);
+    const x1 = d3.scaleBand(series.map((s) => s[0]), [0, x0.bandwidth()]).padding(0.1);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W).attr('y1', y).attr('y2', y).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', ml - 6).attr('y', (d) => y(d) + 4).attr('text-anchor', 'end').text(short);
+    const every = x0.step() < 30 ? 2 : 1;
+    svg.append('g').selectAll('text').data(rows.filter((_, i) => (rows.length - 1 - i) % every === 0)).join('text')
+      .attr('x', (r) => x0(r.month) + x0.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text((r) => monthLabel(r.month));
+    const g = svg.append('g').selectAll('g').data(rows).join('g').attr('transform', (r) => `translate(${x0(r.month)},0)`);
+    g.selectAll('rect').data((r) => series.map(([k, , c]) => ({ k, c, v: r[k] }))).join('rect')
+      .attr('x', (d) => x1(d.k)).attr('width', x1.bandwidth()).attr('y', (d) => y(d.v)).attr('height', (d) => y(0) - y(d.v))
+      .attr('rx', 2).attr('fill', (d) => d.c);
+    svg.append('line').attr('x1', ml).attr('x2', W).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--cds-chart-axis)');
+    const tip = tipFor(box);
+    svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', (r) => x0(r.month) - x0.step() * x0.paddingInner() / 2)
+      .attr('width', x0.step()).attr('y', mt).attr('height', H - mb - mt).attr('fill', 'transparent')
+      .on('mousemove', (event, r) => {
+        const [mx, my] = d3.pointer(event, box);
+        const lines = series.map(([k, name, c]) => [c, name, short(r[k]) + '원']);
+        if (r.saving_rate != null) lines.push([null, '저축률', pct(r.saving_rate)]);
+        tip.show(mx, my, r.month, lines);
+      })
+      .on('mouseleave', () => tip.hide());
+  }
+
+  function drawBudget(v) {
+    const box = document.getElementById('budget');
+    const all = rowsOf('budget', box);
+    if (!all) return;
+    document.getElementById('budget-sub').textContent = v === '전체'
+      ? '집행률이 높은 순 · 검은 선이 예산 · 비정기비는 연 예산의 경과분(9/12)과 비교'
+      : `가계 예산 대비 ${v} 사용분 · 검은 선이 가계 예산`;
+    const rows = all.filter((r) => r.view === v && r.budget > 0);
+    const groups = [['월', '월 예산 (고정비·변동비)'], ['연', '연 예산 누계 (비정기비)']];
+    const nodes = [];
+    for (const [basis, title] of groups) {
+      const g = rows.filter((r) => r.basis === basis).sort((a, b) => b.actual / b.budget - a.actual / a.budget);
+      if (!g.length) continue;
+      nodes.push(el('h4', null, title));
+      for (const r of g) {
+        const ratio = r.actual / r.budget;
+        const scale = Math.max(1, ratio);
+        const row = el('div', 'hh-brow');
+        const track = el('div', 'hh-btrack');
+        const fill = el('div', 'hh-bfill');
+        fill.style.width = (Math.min(ratio, scale) / scale * 100) + '%';
+        const t = tone(r.status);
+        fill.style.background = t === 'bad' ? 'var(--cds-chart-status-critical)' : t === 'warn' ? 'var(--color-warn)' : dash.colors[0];
+        const mark = el('div', 'hh-bmark'); mark.style.left = `calc(${(1 / scale) * 100}% - 1px)`;
+        track.append(fill, mark);
+        const val = el('span', 'hh-bval');
+        val.append(el('b', null, pct(ratio, 0)), ` · ${short(r.actual)} / ${short(r.budget)}`);
+        row.append(el('span', null, r.category), track, val);
+        nodes.push(row);
+      }
+    }
+    box.replaceChildren(...nodes);
+  }
+
+  function drawTrend(v) {
+    const box = document.getElementById('trend');
+    const all = rowsOf('trend', box);
+    if (!all) return;
+    const rows = all.filter((r) => r.view === v).map((r) => ({ ...r, date: new Date(r.month + '-01T00:00:00Z') }));
+    box.replaceChildren();
+    const W = Math.max(280, box.clientWidth), H = 240, mb = 24, mt = 14;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '순자산과 투자+연금 자산 추이');
+    const series = [['net', '순자산', dash.colors[0]], ['invest', '투자+연금', dash.colors[2]]];
+    const max = d3.max(rows, (r) => Math.max(r.net, r.invest)) || 1;
+    const min = Math.min(0, d3.min(rows, (r) => Math.min(r.net, r.invest)));
+    const y = d3.scaleLinear([min, max], [H - mb, mt]).nice();
+    const ticks = y.ticks(4);
+    const ml = measure(svg, ticks.map(short)) + 8;
+    const last = rows[rows.length - 1];
+    const ends = series.map(([k, name, c]) => ({ k, c, text: `${name} ${short(last[k])}`, y: y(last[k]) }));
+    const mr = measure(svg, ends.map((e) => e.text)) + 14;
+    // 끝 라벨이 겹치지 않게 벌린다
+    ends.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 14) ends[i].y = ends[i - 1].y + 14;
+    const x = d3.scaleUtc(d3.extent(rows, (r) => r.date), [ml, W - mr]);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W - mr).attr('y1', y).attr('y2', y).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', ml - 6).attr('y', (d) => y(d) + 4).attr('text-anchor', 'end').text(short);
+    const every = (W - mr - ml) / rows.length < 34 ? 3 : 2;
+    svg.append('g').selectAll('text').data(rows.filter((_, i) => (rows.length - 1 - i) % every === 0)).join('text')
+      .attr('x', (r) => x(r.date)).attr('y', H - 6).attr('text-anchor', 'middle').text((r) => monthLabel(r.month));
+    for (const [k, , c] of series) {
+      svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', c).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round')
+        .attr('d', d3.line((r) => x(r.date), (r) => y(r[k])));
+      svg.append('circle').attr('cx', x(last.date)).attr('cy', y(last[k])).attr('r', 3.5).attr('fill', c);
+    }
+    svg.append('g').selectAll('text').data(ends).join('text').attr('x', W - mr + 8).attr('y', (e) => e.y + 4)
+      .style('fill', (e) => e.c).style('font-weight', 500).text((e) => e.text);
+    const tip = tipFor(box);
+    const dot = svg.append('g').style('display', 'none');
+    const rule = dot.append('line').attr('stroke', 'var(--cds-chart-reference)').attr('y1', mt).attr('y2', H - mb);
+    const dots = series.map(([, , c]) => dot.append('circle').attr('r', 4).attr('fill', c));
+    svg.append('rect').attr('x', ml).attr('width', W - mr - ml).attr('y', mt).attr('height', H - mb - mt).attr('fill', 'transparent')
+      .on('mousemove', (event) => {
+        const [px] = d3.pointer(event);
+        const i = d3.leastIndex(rows, (r) => Math.abs(x(r.date) - px));
+        const r = rows[i];
+        dot.style('display', null); rule.attr('x1', x(r.date)).attr('x2', x(r.date));
+        series.forEach(([k], j) => dots[j].attr('cx', x(r.date)).attr('cy', y(r[k])));
+        const [mx, my] = d3.pointer(event, box);
+        tip.show(mx, my, r.month, [...series.map(([k, name, c]) => [c, name, short(r[k]) + '원']), [null, '총부채', short(r.debt) + '원']]);
+      })
+      .on('mouseleave', () => { tip.hide(); dot.style('display', 'none'); });
+  }
+
+  function drawAlloc(v) {
+    const box = document.getElementById('alloc');
+    const all = rowsOf('allocation', box);
+    if (!all) return;
+    const rows = all.filter((r) => r.view === v);
+    const top = Math.max(0.6, d3.max(rows, (r) => Math.max(r.current, r.target + BAND)) * 1.1);
+    const pos = (x) => Math.max(0, Math.min(100, (x / top) * 100));
+    box.replaceChildren(...rows.map((r) => {
+      const row = el('div', 'hh-brow');
+      const track = el('div', 'hh-btrack');
+      const band = el('div', 'hh-band');
+      band.style.left = pos(r.target - BAND) + '%'; band.style.width = (pos(r.target + BAND) - pos(r.target - BAND)) + '%';
+      const fill = el('div', 'hh-bfill'); fill.style.width = pos(r.current) + '%';
+      fill.style.background = tone(r.status) === 'warn' && v === '전체' ? 'var(--color-warn)' : dash.colors[2];
+      const mark = el('div', 'hh-bmark'); mark.style.left = `calc(${pos(r.target)}% - 1px)`;
+      track.append(band, fill, mark);
+      const gap = r.current - r.target;
+      const val = el('span', 'hh-bval');
+      val.append(el('b', null, pct(r.current)), ` · 목표 ${pct(r.target, 0)} (${gap >= 0 ? '+' : ''}${(gap * 100).toFixed(1)}%p)`);
+      row.append(el('span', null, r.asset_class), track, val);
+      return row;
+    }));
+  }
+
+  function drawGoals() {
+    const table = document.getElementById('goals');
+    const rows = rowsOf('goals');
+    if (!rows) return;
+    table.tBodies[0].replaceChildren(...rows.map((r) => {
+      const tr = el('tr');
+      const prog = el('span', 'hh-prog');
+      const track = el('div', 'hh-btrack');
+      const fill = el('div', 'hh-bfill'); fill.style.width = Math.min(100, r.progress * 100) + '%';
+      fill.style.background = tone(r.status) === 'warn' ? 'var(--color-warn)' : dash.colors[0];
+      const mark = el('div', 'hh-bmark'); mark.style.left = `calc(${Math.min(100, r.plan * 100)}% - 1px)`;
+      track.append(fill, mark);
+      prog.append(track, el('span', null, pct(r.progress, 0)));
+      const pc = el('td', 'hh-left'); pc.append(prog);
+      const pill = el('span', 'hh-pill', clean(r.status)); pill.dataset.tone = tone(r.status);
+      const sc = el('td', 'hh-left'); sc.append(pill);
+      tr.append(el('td', null, r.goal), el('td', 'hh-narrow-hide', r.owner), pc, sc, el('td', null, short(r.monthly_needed) + '원'), el('td', 'hh-narrow-hide', r.due));
+      return tr;
+    }));
+  }
+
+  function drawCash(v) {
+    const box = document.getElementById('cash');
+    const all = rowsOf('cashflow', box);
+    if (!all) return;
+    const rows = all.filter((r) => r.view === v);
+    box.replaceChildren();
+    const W = Math.max(280, box.clientWidth), H = 240, mb = 24, mt = 18;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', '향후 6개월 예상 잔고');
+    const lo = Math.min(0, d3.min(rows, (r) => r.balance)), hi = Math.max(MIN_CASH, d3.max(rows, (r) => r.balance));
+    const y = d3.scaleLinear([lo, hi], [H - mb, mt]).nice();
+    const ticks = y.ticks(4);
+    const ml = measure(svg, ticks.map(short)) + 8;
+    const x = d3.scaleBand(rows.map((r) => r.month), [ml, W]).padding(0.35);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', ml).attr('x2', W).attr('y1', y).attr('y2', y).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', ml - 6).attr('y', (d) => y(d) + 4).attr('text-anchor', 'end').text(short);
+    svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (r) => x(r.month) + Math.max(0, (x.bandwidth() - 32) / 2)).attr('width', Math.min(32, x.bandwidth()))
+      .attr('y', (r) => Math.min(y(r.balance), y(0))).attr('height', (r) => Math.abs(y(0) - y(r.balance))).attr('rx', 4)
+      .attr('fill', (r) => (r.balance < MIN_CASH ? 'var(--cds-chart-status-critical)' : dash.colors[0]));
+    svg.append('g').selectAll('text').data(rows).join('text').attr('x', (r) => x(r.month) + x.bandwidth() / 2).attr('y', (r) => y(Math.max(r.balance, 0)) - 5)
+      .attr('text-anchor', 'middle').style('fill', 'var(--color-fg)').text((r) => short(r.balance));
+    svg.append('g').selectAll('text').data(rows).join('text').attr('x', (r) => x(r.month) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text((r) => monthLabel(r.month));
+    svg.append('line').attr('x1', ml).attr('x2', W).attr('y1', y(MIN_CASH)).attr('y2', y(MIN_CASH)).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '4 3');
+    svg.append('line').attr('x1', ml).attr('x2', W).attr('y1', y(0)).attr('y2', y(0)).attr('stroke', 'var(--cds-chart-axis)');
+    const tip = tipFor(box);
+    svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', (r) => x(r.month) - x.step() * x.padding() / 2).attr('width', x.step())
+      .attr('y', mt).attr('height', H - mb - mt).attr('fill', 'transparent')
+      .on('mousemove', (event, r) => { const [mx, my] = d3.pointer(event, box); tip.show(mx, my, r.month, [[null, '예상 잔고', short(r.balance) + '원'], [null, '순현금흐름', (r.net >= 0 ? '+' : '') + short(r.net) + '원']]); })
+      .on('mouseleave', () => tip.hide());
+  }
+
+  let linked = false;
+  dash.onData(() => {
+    const v = view();
+    buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    drawKpis(v); drawAlerts(v); drawMembers(); drawMonthly(v); drawBudget(v); drawTrend(v); drawAlloc(v); drawGoals(); drawCash(v);
+    if (!linked && dash.data('kpis').status === 'ok') {
+      linked = true;
+      const named = location.hash && document.getElementById(location.hash.slice(1));
+      if (named) named.scrollIntoView();
+    }
+  });
+})();
+</script>
