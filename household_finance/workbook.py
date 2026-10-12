@@ -18,7 +18,6 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import column_index_from_string, get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from household_finance import sample_data
 from household_finance import schema as s
 
 # ---------------------------------------------------------------- 스타일
@@ -161,7 +160,7 @@ def month_offset(k: int) -> str:
 
 
 # ---------------------------------------------------------------- 설정
-def build_settings(ws, base_month: str) -> None:
+def build_settings(ws, st) -> None:
     title(ws, "⚙ 설정", "노란 칸은 가정의 목표치(경영 목표)입니다. 기준월·보기는 대시보드 상단에서 바꿉니다.")
     write_header(ws, 2, ["항목", "값", "설명"])
     rows = [
@@ -180,14 +179,14 @@ def build_settings(ws, base_month: str) -> None:
         put(ws, f"C{r}", desc, font=F_NOTE)
     section(ws, 11, "경영 목표 (KPI 기준값)", 1, 3)
     targets = [
-        (12, "목표 저축률", 0.30, PCT, "(소득-소비지출)/소득. 일반적 권장 30% 이상"),
-        (13, "비상자금 목표(개월)", 6, '0"개월"', "필수지출 몇 개월분을 즉시 현금으로 보유할지"),
-        (14, "부채비율 상한", 0.40, PCT, "총부채/총자산"),
-        (15, "DSR 상한", 0.30, PCT, "연간 원리금/연소득 (가정 자체 목표)"),
-        (16, "리밸런싱 밴드", 0.05, PCT, "목표 비중에서 ±이 값 이상 벗어나면 알림"),
-        (18, "최소 유지잔고", 3_000_000, MONEY, "예상 가용현금이 이 아래로 내려가면 경고"),
-        (19, "일정 알림 일수", 30, '0"일"', "며칠 전부터 일정을 알릴지"),
-        (20, "목표 지연 허용폭", 0.05, PCT, "계획 진척률보다 이만큼 뒤처지면 '지연'"),
+        (12, "목표 저축률", st.t_saving, PCT, "(소득-소비지출)/소득. 일반적 권장 30% 이상"),
+        (13, "비상자금 목표(개월)", st.t_emergency, '0"개월"', "필수지출 몇 개월분을 즉시 현금으로 보유할지"),
+        (14, "부채비율 상한", st.t_debt, PCT, "총부채/총자산"),
+        (15, "DSR 상한", st.t_dsr, PCT, "연간 원리금/연소득 (가정 자체 목표)"),
+        (16, "리밸런싱 밴드", st.band, PCT, "목표 비중에서 ±이 값 이상 벗어나면 알림"),
+        (18, "최소 유지잔고", st.min_cash, MONEY, "예상 가용현금이 이 아래로 내려가면 경고"),
+        (19, "일정 알림 일수", st.alert_days, '0"일"', "며칠 전부터 일정을 알릴지"),
+        (20, "목표 지연 허용폭", st.goal_tol, PCT, "계획 진척률보다 이만큼 뒤처지면 '지연'"),
     ]
     for r, label, value, fmt, desc in targets:
         put(ws, f"A{r}", label)
@@ -198,16 +197,16 @@ def build_settings(ws, base_month: str) -> None:
     put(ws, "C17", "투자이체+연금납입 합계 목표 = 아래 구성원별 목표의 합 (투자금 확대 핵심 지표)", font=F_NOTE)
     section(ws, 21, "절세 계좌 연간 한도 (세법 개정 시 수정)", 1, 3)
     limits = [
-        (22, "연금계좌 세액공제 한도(합산)", 9_000_000, "연금저축+IRP 합산 세액공제 대상 한도"),
-        (23, "연금저축 세액공제 한도", 6_000_000, "연금저축 단독 한도"),
-        (24, "ISA 연간 납입한도", 20_000_000, "ISA 연간 납입 한도"),
+        (22, "연금계좌 세액공제 한도(합산)", st.lim_pension_total, "연금저축+IRP 합산 세액공제 대상 한도"),
+        (23, "연금저축 세액공제 한도", st.lim_pension, "연금저축 단독 한도"),
+        (24, "ISA 연간 납입한도", st.lim_isa, "ISA 연간 납입 한도"),
     ]
     for r, label, value, desc in limits:
         put(ws, f"A{r}", label)
         put(ws, f"B{r}", value, MONEY, font=F_INPUT, fill=FILL_KEY)
         put(ws, f"C{r}", desc, font=F_NOTE)
     section(ws, 25, "구성원별 월 투자 납입 목표 (부부가 각자 책임지는 몫)", 1, 3)
-    for r, (member, value) in zip(range(26, 29), [("본인", 1_150_000), ("배우자", 850_000), ("공동", 200_000)]):
+    for r, (member, value) in zip(range(26, 29), [(m, st.invest_targets.get(m, 0)) for m in s.OWNERS]):
         put(ws, f"A{r}", f"월 투자 납입 목표 - {member}")
         put(ws, f"B{r}", value, MONEY, font=F_INPUT, fill=FILL_KEY)
         put(ws, f"C{r}", f"{member} 보기에서 비교하는 목표", font=F_NOTE)
@@ -228,10 +227,10 @@ def build_settings(ws, base_month: str) -> None:
 
 
 # ---------------------------------------------------------------- 기준 정보
-def build_categories(ws) -> None:
+def build_categories(ws, categories) -> None:
     write_header(ws, 1, ["카테고리", "대분류", "필수지출(Y/N)", "설명"], input_sheet=True)
     notes = {s.CAPITAL: "소비 아님 - 자산 간 이동", s.IRREGULAR: "연간 예산으로 관리"}
-    for i, (name, group, essential, _basis, _budget) in enumerate(s.CATEGORY_TABLE, start=2):
+    for i, (name, group, essential) in enumerate(((c.name, c.group, c.essential) for c in categories), start=2):
         for c, v in enumerate([name, group, essential, notes.get(group, "")], start=1):
             put(ws, f"{get_column_letter(c)}{i}", v, font=F_INPUT if c < 4 else F_NOTE)
     add_list_validation(ws, "B2:B200", '"' + ",".join(s.GROUPS) + '"')
@@ -240,10 +239,10 @@ def build_categories(ws) -> None:
     ws.freeze_panes = "A2"
 
 
-def build_rules(ws) -> None:
+def build_rules(ws, rules) -> None:
     write_header(ws, 1, ["키워드(내용에 포함)", "카테고리", "설명"], input_sheet=True)
     put(ws, "C2", "CSV 가져오기 시 위에서부터 먼저 맞는 규칙으로 자동 분류됩니다. 대소문자 무시.", font=F_NOTE, border=False)
-    for i, (kw, cat) in enumerate(s.DEFAULT_RULES, start=2):
+    for i, (kw, cat) in enumerate(rules, start=2):
         put(ws, f"A{i}", kw, font=F_INPUT)
         put(ws, f"B{i}", cat, font=F_INPUT)
     add_list_validation(ws, "B2:B500", f"={q(s.CATEGORIES)}$A$2:$A$200")
@@ -321,17 +320,17 @@ BUDGET_FIRST, BUDGET_LAST = 4, 43
 BUDGET_TOTAL_MONTHLY, BUDGET_TOTAL_YEARLY = 45, 46
 
 
-def build_budget(ws) -> None:
+def build_budget(ws, budgets) -> None:
     title(ws, "📋 예산 대비 실적", "고정비·변동비는 월 예산, 비정기비는 연 예산(경과 월수만큼 안분)과 비교합니다. 실적은 대시보드 '보기' 구성원 기준.")
     write_header(ws, 3, ["카테고리", "대분류", "기준", "예산", "경과 예산", "실적", "집행률", "잔여", "상태",
                          "실적-본인", "실적-배우자", "실적-공동", "(알림용)"], input_sheet=True)
     for c in range(5, 14):
         ws.cell(row=3, column=c).fill = FILL_HEADER
-    budget_rows = [row for row in s.CATEGORY_TABLE if row[1] in s.CONSUMPTION_GROUPS]
+    budget_rows = sorted(((b.category, b.basis, b.amount) for b in budgets if b.category), key=lambda b: b[1] != "월")
     for i in range(BUDGET_LAST - BUDGET_FIRST + 1):
         r = BUDGET_FIRST + i
         if i < len(budget_rows):
-            name, _group, _ess, basis, amount = budget_rows[i]
+            name, basis, amount = budget_rows[i]
             put(ws, f"A{r}", name, font=F_INPUT)
             put(ws, f"C{r}", basis, font=F_INPUT, align=CENTER)
             put(ws, f"D{r}", amount, MONEY, font=F_INPUT)
@@ -555,7 +554,7 @@ def build_balance(ws) -> None:
 INV = {"alloc_first": 4, "alloc_total": 9, "contrib": 12, "tax_first": 20, "hold_header": 25, "hold_total": 26, "hold_first": 27}
 
 
-def build_invest(ws, holdings: list[tuple], pnl: dict[str, int]) -> None:
+def build_invest(ws, holdings: list[tuple], pnl: dict[str, int], allocation: dict[str, float]) -> None:
     title(ws, "📈 투자 포트폴리오", "보유종목 표에 수량·현재가를 입력하면 자산배분·수익률이 계산됩니다. 구글 시트에서는 현재가에 =GOOGLEFINANCE(시세코드) 사용 가능.")
     write_header(ws, 3, ["자산군", "목표 비중", "평가금액", "현재 비중", "괴리(%p)", "상태", "목표까지 조정금액", "(알림용)"])
     ws["B3"].fill = FILL_INPUT_HEADER
@@ -563,7 +562,7 @@ def build_invest(ws, holdings: list[tuple], pnl: dict[str, int]) -> None:
     for i, klass in enumerate(s.ASSET_CLASSES):
         r = INV["alloc_first"] + i
         put(ws, f"A{r}", klass)
-        put(ws, f"B{r}", s.DEFAULT_ALLOCATION[klass], PCT, font=F_INPUT, fill=FILL_KEY)
+        put(ws, f"B{r}", allocation.get(klass, 0.0), PCT, font=F_INPUT, fill=FILL_KEY)
         put(ws, f"C{r}", f"=SUMIFS($K${hf}:$K${hl},$F${hf}:$F${hl},A{r},$C${hf}:$C${hl},{S('crit')})", MONEY)
         put(ws, f"D{r}", f"=IF($C${INV['alloc_total']}=0,0,C{r}/$C${INV['alloc_total']})", PCT)
         put(ws, f"E{r}", f"=D{r}-B{r}", PCT)
@@ -918,7 +917,7 @@ def build_dashboard(ws, base_month: str, pnl: dict[str, int]) -> None:
          f'=IF({joint},"공동 보기는 직접 소득이 없어 계산하지 않음","목표 "&TEXT({S("t_saving")},"0%")&" · 12개월 "&TEXT({pr("저축률", "N")},"0.0%"))',
          f'=IF({joint},"- 해당 없음",IF({pr("소득 합계")}=0,"- 소득 데이터 없음",IF({pr("저축률")}>={S("t_saving")},"✅ 달성","⚠ 미달")))'),
         ("월 투자 납입액", f"={pr('투자 납입액 (투자+연금)')}", MONEY,
-         f'="목표 "&TEXT({S("t_invest_view")},"#,##0")&" · 납입률 "&TEXT({pr("투자 납입률")},"0%")',
+         f'="목표 "&TEXT({S("t_invest_view")},"#,##0")&IF({joint},""," · 납입률 "&TEXT({pr("투자 납입률")},"0%"))',
          f'=IF({pr("투자 납입액 (투자+연금)")}>={S("t_invest_view")},"✅ 달성","⚠ 미달 "&TEXT({S("t_invest_view")}-{pr("투자 납입액 (투자+연금)")},"#,##0"))'),
         ("투자+연금 자산", f"={bs('invest')}", MONEY,
          f'="총자산의 "&TEXT(IF({bs("total_assets")}=0,0,{bs("invest")}/{bs("total_assets")}),"0.0%")',
@@ -1065,7 +1064,10 @@ def add_charts(wb) -> None:
     bar.set_categories(Reference(pnl_ws, min_col=2, max_col=13, min_row=3, max_row=3))
     ws.add_chart(bar, "H32")
 
-    monthly = sum(1 for row in s.CATEGORY_TABLE if row[1] in (s.FIXED, s.VARIABLE))
+    monthly = 0
+    while monthly < BUDGET_LAST - BUDGET_FIRST + 1 and bud.cell(BUDGET_FIRST + monthly, 3).value == "월":
+        monthly += 1
+    monthly = max(1, monthly)
     budget = BarChart()
     budget.type = "bar"
     budget.title = "이번 달 예산 vs 실적"
@@ -1147,41 +1149,58 @@ def build_guide(ws, sample: bool) -> None:
 
 
 # ---------------------------------------------------------------- 진입점
-def build_workbook(path: str | Path, sample: bool = True, base_month: str | None = None) -> Path:
+def _rows(ds):
+    """데이터셋 → 시트 생성기가 쓰는 행 튜플."""
+    return {
+        "accounts": [(a.id, a.name, a.institution, a.type, a.owner, a.liquidity, a.memo) for a in ds.accounts],
+        "snapshots": [(x.month, x.account_id, x.amount) for x in ds.snapshots],
+        "holdings": [(h.account_id, h.name, h.code, h.asset_class, h.qty, h.avg_price, h.price) for h in ds.holdings],
+        "debts": [(d.name, d.account_id, d.rate, d.maturity, d.method, d.payment) for d in ds.debts],
+        "goals": [(g.name, g.owner, g.target, g.start, g.end, *(list(g.accounts) + ["", "", ""])[:3]) for g in ds.goals],
+        "insurances": [(p.insured, p.insurer, p.product, *[p.coverages.get(c, 0) for c in s.COVERAGES], p.premium,
+                        p.maturity, p.renewable) for p in ds.insurances],
+        "events": [(e.day, e.desc, e.kind, e.amount, e.member) for e in ds.events],
+    }
+
+
+def build_workbook(path: str | Path, sample: bool = True, base_month: str | None = None, dataset=None) -> Path:
+    """스프레드시트 생성. dataset을 주면 그 데이터로(웹앱 → 엑셀 내보내기), 아니면 샘플 또는 빈 템플릿."""
+    from household_finance.model import empty_dataset, sample_dataset
+
     path = Path(path)
-    if base_month is None:
-        if sample:
-            base_month = sample_data.BASE_MONTH
-        else:
+    if dataset is None:
+        if base_month is None and not sample:
             today = date.today()
             y, m = (today.year, today.month - 1) if today.month > 1 else (today.year - 1, 12)
             base_month = f"{y}-{m:02d}"
+        dataset = sample_dataset() if sample else empty_dataset(base_month)
+    ds = dataset
+    if base_month:
+        ds.settings.base_month = base_month
+    base_month = ds.settings.base_month
+    rows = _rows(ds)
 
     wb = Workbook()
     wb.remove(wb.active)
     sheets = {name: wb.create_sheet(name) for name in s.SHEET_ORDER}
 
-    build_settings(sheets[s.SETTINGS], base_month)
-    build_categories(sheets[s.CATEGORIES])
-    build_rules(sheets[s.RULES])
-    build_accounts(sheets[s.ACCOUNTS], sample_data.ACCOUNTS if sample else [])
-    build_snapshot(sheets[s.SNAPSHOT], sample_data.snapshots() if sample else [])
-    build_transactions(sheets[s.TX], sample_data.transactions() if sample else [])
-    build_budget(sheets[s.BUDGET])
+    build_settings(sheets[s.SETTINGS], ds.settings)
+    build_categories(sheets[s.CATEGORIES], ds.categories)
+    build_rules(sheets[s.RULES], ds.rules)
+    build_accounts(sheets[s.ACCOUNTS], rows["accounts"])
+    build_snapshot(sheets[s.SNAPSHOT], rows["snapshots"])
+    build_transactions(sheets[s.TX], sorted(ds.transactions, key=lambda t: t.day))
+    build_budget(sheets[s.BUDGET], ds.budgets)
     pnl = build_pnl(sheets[s.PNL])
     build_balance(sheets[s.BALANCE])
-    build_invest(sheets[s.INVEST], sample_data.holdings() if sample else [], pnl)
-    build_debt(sheets[s.DEBT], sample_data.DEBTS if sample else [], pnl)
-    # 빈 템플릿에도 '비상자금' 목표는 남겨 둔다 - 목표금액이 자동 계산되는 기본 목표다.
-    today = date.today()
-    goals = sample_data.GOALS if sample else [
-        ("비상자금", "공동", None, today, date(today.year + 1, today.month, min(today.day, 28)), "", "", "")]
-    build_goals(sheets[s.GOALS], goals, pnl)
-    build_insurance(sheets[s.INSURANCE], sample_data.INSURANCES if sample else [], pnl)
-    build_events(sheets[s.EVENTS], sample_data.EVENTS if sample else [])
+    build_invest(sheets[s.INVEST], rows["holdings"], pnl, ds.allocation)
+    build_debt(sheets[s.DEBT], rows["debts"], pnl)
+    build_goals(sheets[s.GOALS], rows["goals"], pnl)
+    build_insurance(sheets[s.INSURANCE], rows["insurances"], pnl)
+    build_events(sheets[s.EVENTS], rows["events"])
     build_cashflow(sheets[s.CASHFLOW], pnl)
     build_dashboard(sheets[s.DASHBOARD], base_month, pnl)
-    build_guide(sheets[s.GUIDE], sample)
+    build_guide(sheets[s.GUIDE], any(t.source == "샘플" for t in ds.transactions))   # 샘플이면 안내 문구 추가
     add_charts(wb)
 
     for name, ws in sheets.items():
@@ -1193,3 +1212,4 @@ def build_workbook(path: str | Path, sample: bool = True, base_month: str | None
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
     return path
+

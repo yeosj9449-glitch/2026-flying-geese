@@ -9,12 +9,18 @@ dependencies = [
     "python-dotenv>=1.0",
 ]
 
+[project.optional-dependencies]
+web = ["fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["flying_geese*", "household_finance*"]
+
+[tool.setuptools.package-data]
+household_finance = ["webapp/static/*", "templates/*.xlsx"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -207,6 +207,26 @@ def _save(wb, path: Path) -> None:
     wb.save(path)
 
 
+def plan_import(statement: list[StatementRow], existing: list[tuple], rules: list[tuple[str, str]], member: str,
+                payment: str, source: str) -> ImportResult:
+    """가져올 거래 결정: 자동 분류 + 중복 제거. existing은 (일자, 내용, 금액, 구성원) 목록.
+    같은 거래는 개수까지 비교한다 - 이미 있는 만큼은 건너뛰고 초과분만 추가 (같은 날 커피 두 잔)."""
+    if member not in s.OWNERS:
+        raise ValueError(f"구성원은 {', '.join(s.OWNERS)} 중 하나여야 합니다: {member}")
+    counts = Counter(_tx_key(*row) for row in existing)
+    result = ImportResult()
+    for row in statement:
+        key = _tx_key(row.day, row.desc, row.amount, member)
+        if counts[key] > 0:
+            counts[key] -= 1
+            result.duplicates += 1
+            continue
+        category = categorize(row.desc, rules)
+        memo = "입금" if row.is_income and category == s.UNCATEGORIZED else ""
+        result.added.append(ImportedTx(row.day, row.desc, row.amount, category, member, payment, source, memo))
+    return result
+
+
 def import_statement(workbook_path: str | Path, statement_path: str | Path, member: str, payment: str = "",
                      dry_run: bool = False, **columns) -> ImportResult:
     """내역 파일을 거래내역 시트에 추가. 같은 (일자, 내용, 금액, 구성원) 거래는 개수까지 비교해 중복 제거."""
@@ -219,20 +239,10 @@ def import_statement(workbook_path: str | Path, statement_path: str | Path, memb
     statement, skipped = read_statement(statement_path, **columns)
 
     last = _last_data_row(ws)
-    existing = Counter(
-        _tx_key(ws.cell(r, 1).value, ws.cell(r, 3).value, ws.cell(r, 4).value, ws.cell(r, 8).value)
-        for r in range(2, last + 1) if ws.cell(r, 1).value)
-    result = ImportResult(skipped=skipped)
-    source = Path(statement_path).name
-    for row in statement:
-        key = _tx_key(row.day, row.desc, row.amount, member)
-        if existing[key] > 0:            # 이미 있는 만큼은 건너뛰고 초과분만 추가
-            existing[key] -= 1
-            result.duplicates += 1
-            continue
-        category = categorize(row.desc, rules)
-        memo = "입금" if row.is_income and category == s.UNCATEGORIZED else ""
-        result.added.append(ImportedTx(row.day, row.desc, row.amount, category, member, payment, source, memo))
+    existing = [(ws.cell(r, 1).value, ws.cell(r, 3).value, ws.cell(r, 4).value, ws.cell(r, 8).value)
+                for r in range(2, last + 1) if ws.cell(r, 1).value]
+    result = plan_import(statement, existing, rules, member, payment, Path(statement_path).name)
+    result.skipped = skipped
 
     if dry_run or not result.added:
         return result

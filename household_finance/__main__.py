@@ -1,4 +1,4 @@
-"""명령줄 도구: python -m household_finance {build,import,new-month} ..."""
+"""명령줄 도구: python -m household_finance {build,import,new-month,serve} ..."""
 
 from __future__ import annotations
 
@@ -32,6 +32,12 @@ def main(argv: list[str] | None = None) -> int:
     n.add_argument("workbook", help="자산관리 .xlsx 경로")
     n.add_argument("--month", help="만들 달 (yyyy-mm, 기본: 마지막 스냅샷의 다음 달)")
 
+    w = sub.add_parser("serve", help="웹앱 실행 (브라우저로 http://주소:포트 접속)")
+    w.add_argument("--db", default="우리집.db", help="데이터베이스 파일 (없으면 새로 만듦)")
+    w.add_argument("--host", default="127.0.0.1", help="같은 와이파이의 다른 기기에서 접속하려면 0.0.0.0")
+    w.add_argument("--port", type=int, default=8000)
+    w.add_argument("--from-workbook", help="데이터베이스가 비어 있으면 이 엑셀 파일로 채움")
+
     args = parser.parse_args(argv)
     try:
         if args.command == "build":
@@ -51,9 +57,29 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "new-month":
             month, count = new_month(args.workbook, args.month)
             print(f"{month} 스냅샷 {count}행 생성 (직전 달 잔액 복사). 바뀐 잔액만 수정하세요. 대시보드 기준월 → {month}")
+        elif args.command == "serve":
+            return serve(args)
     except (ValueError, KeyError, FileNotFoundError) as exc:
         print(f"오류: {exc}", file=sys.stderr)
         return 1
+    return 0
+
+
+def serve(args) -> int:
+    import uvicorn
+
+    from household_finance.model import load_workbook_dataset
+    from household_finance.store import Store
+    from household_finance.webapp.app import create_app
+
+    if args.from_workbook:
+        store = Store(args.db)
+        if store.is_empty():
+            store.replace_dataset(load_workbook_dataset(args.from_workbook))
+            print(f"엑셀 데이터를 가져왔습니다: {args.from_workbook}")
+        store.close()
+    print(f"우리집 주식회사 웹앱: http://{'localhost' if args.host in ('127.0.0.1', '0.0.0.0') else args.host}:{args.port}")
+    uvicorn.run(create_app(args.db), host=args.host, port=args.port, log_level="warning")
     return 0
 
 
