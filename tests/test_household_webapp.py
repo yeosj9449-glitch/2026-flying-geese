@@ -17,7 +17,7 @@ USERS = [{"username": "jiwoo", "password": "password-1", "member": "본인"},
 @pytest.fixture
 def client(tmp_path):
     c = TestClient(create_app(tmp_path / "home.db", today=TODAY))
-    assert c.get("/api/status").json() == {"setup_needed": True, "has_data": False}
+    assert c.get("/api/status").json() == {"setup_needed": True, "has_data": False, "setup_code_required": False}
     assert c.post("/api/setup", json={"users": USERS, "start": "sample"}).status_code == 200
     return c
 

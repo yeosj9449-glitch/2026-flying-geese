@@ -353,10 +353,10 @@
         try { await api(`/api/transactions/${t.id}`, { method: 'DELETE' }); toast('삭제했습니다'); load(); } catch (e) { toast(e.message); }
       } }, '삭제');
       actions.append(ruleBtn, ' ', del);
-      const patch = async (fields) => { try { await api(`/api/transactions/${t.id}`, { method: 'PATCH', body: fields }); Object.assign(t, fields); toast('저장했습니다'); } catch (e) { toast(e.message); } };
+      const patch = async (fields) => { try { await api(`/api/transactions/${t.id}`, { method: 'PATCH', body: fields }); Object.assign(t, fields); toast('저장했습니다'); return true; } catch (e) { toast(e.message); return false; } };
       return h('tr', null, h('td', null, t.day), h('td', null, t.desc, t.memo ? h('span', { class: 'muted' }, ` · ${t.memo}`) : null), h('td', { class: 'num' }, won(t.amount)),
-        h('td', null, categorySelect(t.category || '미분류', async (e) => { await patch({ category: e.target.value }); ruleBtn.hidden = e.target.value === '미분류'; })),
-        h('td', null, memberSelect(t.member, (e) => patch({ member: e.target.value }))), h('td', { class: 'narrow-hide muted' }, t.payment), actions);
+        h('td', null, categorySelect(t.category || '미분류', async (e) => { if (await patch({ category: e.target.value })) ruleBtn.hidden = e.target.value === '미분류'; else e.target.value = t.category || '미분류'; })),
+        h('td', null, memberSelect(t.member, async (e) => { if (!(await patch({ member: e.target.value }))) e.target.value = t.member; })), h('td', { class: 'narrow-hide muted' }, t.payment), actions);
     }
     load();
   }
@@ -713,7 +713,10 @@
     const body = h('div', { class: 'section' }, h('p', { class: 'muted' }, '불러오는 중…'));
     shell([h('div', { class: 'head no-print' }, h('div', null, h('p', { class: 'eyebrow' }, '가족회의 자료'), h('h1', null, '결산 리포트'),
       h('p', { class: 'take' }, '월간 결산 때 부부가 함께 보는 한 장 요약입니다. 인쇄하거나 PDF로 저장해 보관하세요.')),
-      h('div', { class: 'row' }, monthSelect(renderReport), h('button', { class: 'btn primary', onclick: () => window.print() }, '인쇄 / PDF 저장'))), body]);
+      h('div', { class: 'row' }, monthSelect(renderReport), window.HH_DEMO ? h('span', { class: 'sub' }, '인쇄·PDF 저장은 실제 앱에서 됩니다') : h('button', { class: 'btn primary', onclick: () => window.print() }, '인쇄 / PDF 저장'),
+        state.meta.mail_enabled && !window.HH_DEMO ? h('button', { class: 'btn', onclick: async () => {
+          try { const r = await api('/api/report/send', { body: { month: state.month } }); toast(`메일을 보냈습니다: ${r.sent_to.join(', ')}`); } catch (e) { toast(e.message); }
+        } }, '메일로 보내기') : null)), body]);
     const d = await api(`/api/dashboard?view=전체&month=${state.month}`);
     const rows = d.pnl.rows, i = rows.income.length - 1, avg = (k) => d.pnl.agg[k].O;
     const card = Object.fromEntries(d.cards.map((c) => [c.kpi, c]));
@@ -762,18 +765,20 @@
     u.focus();
   }
 
-  function renderSetup() {
+  function renderSetup(st = {}) {
     const mk = (member) => ({ member, username: h('input', { type: 'text', autocomplete: 'off', 'aria-label': `${member} 아이디` }), password: h('input', { type: 'password', autocomplete: 'new-password', 'aria-label': `${member} 비밀번호` }) });
     const a = mk('본인'), b = mk('배우자');
     const startSel = h('select', null, h('option', { value: 'blank' }, '빈 가계로 시작'), h('option', { value: 'sample' }, '샘플 데이터로 둘러보기'));
     const err = h('p', { class: 'error' });
-    $app.replaceChildren(h('div', { class: 'auth' }, h('div', { class: 'card' }, h('h1', null, '처음 설정'), h('p', { class: 'sub' }, '부부가 각자 쓸 계정을 만듭니다. 배우자 계정은 나중에 설정 메뉴에서 만들어도 됩니다.'),
+    const code = h('input', { type: 'text', autocomplete: 'off', id: 'setup-code', placeholder: '예: 7F3K9Q' });
+    $app.replaceChildren(h('div', { class: 'auth' }, h('div', { class: 'card' }, h('h1', null, '처음 설정'),
+      st.setup_code_required ? h('label', { class: 'field' }, '설치 코드 (서버를 켤 때 화면에 표시된 코드)', code) : null, h('p', { class: 'sub' }, '부부가 각자 쓸 계정을 만듭니다. 배우자 계정은 나중에 설정 메뉴에서 만들어도 됩니다.'),
       ...[a, b].map((x) => h('div', { class: 'form' }, h('label', { class: 'field' }, `${x.member} 아이디`, x.username), h('label', { class: 'field' }, '비밀번호 (8자 이상)', x.password))),
       h('label', { class: 'field' }, '시작 방법', startSel),
       h('p', { class: 'sub' }, '1단계 엑셀 파일이 있다면 빈 가계로 시작한 뒤 [내역 가져오기 → 엑셀 파일과 주고받기]에서 올리세요.'), err,
       h('button', { class: 'btn primary', onclick: async () => {
         const users = [a, b].filter((x) => x.username.value).map((x) => ({ username: x.username.value, password: x.password.value, member: x.member }));
-        try { await api('/api/setup', { body: { users, start: startSel.value } }); start(); } catch (e) { err.textContent = e.message; }
+        try { await api('/api/setup', { body: { users, start: startSel.value, code: code.value } }); start(); } catch (e) { err.textContent = e.message; }
       } }, '시작하기'))));
   }
 
@@ -791,7 +796,7 @@
   async function start() {
     try {
       const st = await api('/api/status');
-      if (st.setup_needed) { renderSetup(); return; }
+      if (st.setup_needed) { renderSetup(st); return; }
       state.me = await api('/api/me', { allow401: true });
       state.meta = await api('/api/meta');
       state.month = state.meta.base_month;

@@ -6,18 +6,22 @@
 
 from __future__ import annotations
 
+import hmac
 import shutil
 import tempfile
+import time
+from collections import defaultdict
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 from starlette.background import BackgroundTask
 
-from household_finance import prices
+from household_finance import prices, report
 from household_finance import schema as s
 from household_finance.engine import compute, shift_month
 from household_finance.importer import plan_import, read_statement
@@ -39,6 +43,7 @@ class UserIn(BaseModel):
 
 
 class SetupIn(BaseModel):
+    code: str = ""                  # 설치 코드 (서버가 집 밖에 공개될 때만 필요)
     users: list[UserIn] = Field(min_length=1, max_length=2)
     start: str = "blank"            # blank | sample
     base_month: str | None = Field(default=None, pattern=MONTH_RE)
@@ -174,12 +179,45 @@ class RefreshIn(BaseModel):
 
 
 # ---------------------------------------------------------------- 앱
-def create_app(db_path: str | Path, today: date | None = None, price_fetcher=None) -> FastAPI:
-    """today·price_fetcher는 테스트에서 날짜와 시세 조회를 고정할 때만 쓴다."""
+LOGIN_MAX_FAILS = 5
+LOGIN_WINDOW = 15 * 60        # 초
+
+
+def create_app(db_path: str | Path, today: date | None = None, price_fetcher=None, setup_code: str | None = None,
+               secure_cookies: bool = False, mail: "report.MailConfig | None | bool" = True, mail_sender=None) -> FastAPI:
+    """setup_code: 처음 설정에 필요한 설치 코드 (집 밖에 공개된 서버에서 남이 먼저 가계를 만들지 못하게).
+    secure_cookies: HTTPS 뒤에서 실행할 때 True - 로그인 쿠키를 암호화 연결로만 보낸다.
+    mail: 리포트 메일 설정. True(기본)면 환경변수(HH_SMTP_*)에서 읽는다.
+    today·price_fetcher·mail_sender는 테스트에서 날짜·시세 조회·메일 발송을 고정할 때만 쓴다."""
+    mail = report.MailConfig.from_env() if mail is True else (mail or None)
     store = Store(db_path)
-    app = FastAPI(title="우리집 주식회사", docs_url=None, redoc_url=None)
+    app = FastAPI(title="우리집 주식회사", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store = store
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    failures: dict[str, list[float]] = defaultdict(list)   # 아이디·IP별 최근 로그인 실패 시각
+
+    @app.middleware("http")
+    async def protect(request: Request, call_next):
+        # 다른 사이트에서 몰래 보내는 저장 요청 차단 (SameSite 쿠키에 더해 한 겹 더)
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            origin = request.headers.get("origin")
+            if origin and urlparse(origin).netloc != request.headers.get("host"):
+                return JSONResponse({"detail": "다른 사이트에서 온 요청은 받지 않습니다."}, status_code=403)
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+                                                       "frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+        if secure_cookies:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
+        return response
+
+    def throttled(*keys: str) -> bool:
+        cutoff = time.monotonic() - LOGIN_WINDOW
+        for k in keys:
+            failures[k] = [x for x in failures[k] if x > cutoff]
+        return any(len(failures[k]) >= LOGIN_MAX_FAILS for k in keys)
 
     def now() -> date:
         return today or date.today()
@@ -197,7 +235,8 @@ def create_app(db_path: str | Path, today: date | None = None, price_fetcher=Non
             raise HTTPException(409, str(exc)) from exc
 
     def set_cookie(response: Response, token: str) -> None:
-        response.set_cookie(COOKIE, token, httponly=True, samesite="strict", max_age=60 * 60 * 24 * 30)
+        response.set_cookie(COOKIE, token, httponly=True, samesite="strict", secure=secure_cookies,
+                            max_age=60 * 60 * 24 * Store.SESSION_DAYS)
 
     def check_category(name: str) -> None:
         if name and name != s.UNCATEGORIZED and name not in {c.name for c in store.load_dataset().categories}:
@@ -226,12 +265,14 @@ def create_app(db_path: str | Path, today: date | None = None, price_fetcher=Non
     # ------------------------------------------------------------ 계정
     @app.get("/api/status")
     def status():
-        return {"setup_needed": not store.users(), "has_data": not store.is_empty()}
+        return {"setup_needed": not store.users(), "has_data": not store.is_empty(), "setup_code_required": bool(setup_code)}
 
     @app.post("/api/setup")
     def setup(body: SetupIn, response: Response):
         if store.users():
             raise HTTPException(409, "이미 설정이 끝났습니다. 로그인하세요.")
+        if setup_code and not hmac.compare_digest(body.code.strip().upper(), setup_code.upper()):
+            raise HTTPException(403, "설치 코드가 맞지 않습니다. 서버를 켠 화면에 표시된 코드를 넣으세요.")
         members = [u.member for u in body.users]
         if len(set(members)) != len(members) or not set(members) <= {"본인", "배우자"}:
             raise HTTPException(422, "계정은 본인·배우자 각각 하나씩 만들 수 있습니다.")
@@ -247,10 +288,17 @@ def create_app(db_path: str | Path, today: date | None = None, price_fetcher=Non
         return {"ok": True}
 
     @app.post("/api/login")
-    def login(body: LoginIn, response: Response):
+    def login(body: LoginIn, request: Request, response: Response):
+        keys = (f"user:{body.username}", f"ip:{request.client.host if request.client else '?'}")
+        if throttled(*keys):
+            raise HTTPException(429, "로그인 실패가 너무 많습니다. 15분 뒤에 다시 시도하세요.")
         token = store.login(body.username, body.password)
         if token is None:
+            for k in keys:
+                failures[k].append(time.monotonic())
             raise HTTPException(401, "아이디 또는 비밀번호가 맞지 않습니다.")
+        for k in keys:
+            failures.pop(k, None)
         set_cookie(response, token)
         return {"ok": True}
 
@@ -281,7 +329,7 @@ def create_app(db_path: str | Path, today: date | None = None, price_fetcher=Non
         return {"base_month": ds.settings.base_month, "months": months, "owners": s.OWNERS, "views": s.VIEW_OPTIONS,
                 "members": s.MEMBERS, "account_types": s.ACCOUNT_TYPES, "liquidity": s.LIQUIDITY,
                 "asset_classes": s.ASSET_CLASSES, "coverages": s.COVERAGES, "event_kinds": s.EVENT_KINDS,
-                "allocation": ds.allocation,
+                "allocation": ds.allocation, "mail_enabled": mail is not None, "mail_to": mail.to if mail else [],
                 "groups": s.GROUPS, "categories": [c.__dict__ for c in ds.categories],
                 "accounts": [a.__dict__ for a in ds.accounts], "settings": ds.settings.__dict__}
 
@@ -557,6 +605,23 @@ def create_app(db_path: str | Path, today: date | None = None, price_fetcher=Non
         finally:
             path.unlink(missing_ok=True)
         return apply_prices(prices.match_prices(store.list_entities("holdings"), table), dry_run)
+
+    # ------------------------------------------------------------ 결산 리포트 메일
+    @app.get("/api/report.html")
+    def report_preview(month: str | None = None, u: dict = Depends(user)):
+        subject, html, _text = report.build(compute(data(), "전체", month, now()))
+        return Response(f"<!doctype html><meta charset='utf-8'><title>{subject}</title>{html}", media_type="text/html")
+
+    @app.post("/api/report/send")
+    def report_send(body: CloseIn | None = None, u: dict = Depends(user)):
+        if mail is None:
+            raise HTTPException(400, "메일 설정이 없습니다. 서버를 켤 때 HH_SMTP_HOST·HH_SMTP_USER·HH_SMTP_PASSWORD·HH_MAIL_TO를 지정하세요.")
+        subject, html, text = report.build(compute(data(), "전체", body.month if body else None, now()))
+        try:
+            (mail_sender or report.send)(mail, subject, html, text)
+        except Exception as exc:   # 인증 실패·연결 실패를 그대로 알려 준다
+            raise HTTPException(502, f"메일을 보내지 못했습니다: {exc}") from exc
+        return {"sent_to": mail.to, "subject": subject}
 
     return app
 

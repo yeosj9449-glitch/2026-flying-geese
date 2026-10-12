@@ -1,0 +1,46 @@
+# 집 밖에서도 HTTPS로 접속하는 구성: 웹앱 + 예약 작업(백업·리포트 메일) + Caddy(인증서 자동 발급)
+#   cp .env.example .env   # 도메인·메일 설정 입력
+#   docker compose up -d --build
+#   docker compose logs app   # 처음 설정용 설치 코드 확인
+# Tailscale로만 쓸 때(도메인 불필요): docker compose up -d --build app scheduler  →  tailscale serve --bg 8000
+name: household-finance
+
+x-app: &app
+  image: household-finance:latest
+  build:
+    context: ../..
+    dockerfile: household_finance/deploy/Dockerfile
+  restart: unless-stopped
+  env_file: .env
+  volumes:
+    - hh-data:/data
+
+services:
+  app:
+    <<: *app
+    ports:
+      - "127.0.0.1:8000:8000"     # 이 컴퓨터에서만 직접 접속 (밖에서는 Caddy 또는 Tailscale을 거침)
+
+  scheduler:
+    <<: *app
+    command: ["python", "-m", "household_finance", "scheduler", "--db", "/data/우리집.db",
+              "--backup-dir", "/data/백업", "--keep", "30", "--report-day", "${REPORT_DAY:-1}"]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?.env에 DOMAIN을 지정하세요}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  hh-data:        # 가계 데이터베이스와 백업 (지우면 데이터가 사라집니다)
+  caddy-data:
+  caddy-config:

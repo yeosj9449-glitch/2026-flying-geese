@@ -146,7 +146,9 @@ python -m household_finance serve --db 우리집.db --host 0.0.0.0
 - **계산이 스프레드시트와 같음을 테스트로 보장**합니다: `engine.py`는 엑셀 수식을 옮긴 것이고, `tests/test_household_engine.py`가 샘플 워크북을 LibreOffice로 재계산한 값과 구성원 보기 4종 모두에서 원 단위·문구까지 비교합니다.
 - **엑셀과 오갈 수 있습니다**: 웹앱 데이터를 언제든 수식이 살아 있는 .xlsx로 내려받을 수 있고, 엑셀 파일을 올려 웹앱 데이터를 바꿀 수도 있습니다.
 - **인터넷 없이 동작**합니다: 화면은 외부 라이브러리·CDN 없이 만들었고, 데이터는 `우리집.db` 파일 하나에 저장됩니다. 이 파일을 정기적으로 백업하세요.
-- **보안**: 비밀번호는 scrypt로 해시해 저장하고, 로그인은 HttpOnly·SameSite=Strict 쿠키로 유지합니다. 다만 HTTPS가 아니므로 `--host 0.0.0.0`은 **집 와이파이 안에서만** 쓰고 공유기에서 포트를 외부로 열지 마세요. 밖에서 접속하려면 Tailscale 같은 사설 VPN을 권장합니다.
+- **체험판**: `python -m household_finance demo`로 서버 없이 열어 보는 한 파일짜리 체험판(샘플 데이터, 저장 안 됨)을 만듭니다.
+- **집 밖에서 접속·리포트 메일·백업**: [`deploy/README.md`](deploy/README.md) — Tailscale(권장) 또는 Docker + 도메인 + 자동 HTTPS(Caddy). 공개 서버에서는 설치 코드, 로그인 실패 차단, 보안 쿠키·헤더가 켜집니다.
+- **보안**: 비밀번호는 scrypt로 해시해 저장하고, 로그인은 HttpOnly·SameSite=Strict 쿠키로 유지합니다. HTTPS 없이 `--host 0.0.0.0`으로 켜는 것은 **집 와이파이 안에서만** 쓰세요.
 
 | 파일 | 역할 |
 | --- | --- |
@@ -154,6 +156,10 @@ python -m household_finance serve --db 우리집.db --host 0.0.0.0
 | `engine.py` | 계산 엔진: 손익·재무상태표·예산·투자·부채·목표·보험·현금흐름·대시보드 (엑셀 수식과 동일) |
 | `store.py` | SQLite 저장소와 로그인 계정 |
 | `prices.py` | 보유종목 현재가 갱신 (네이버 금융 조회, 시세 CSV) |
+| `report.py` | 월간 결산 리포트 메일 본문(HTML·텍스트)과 SMTP 발송 |
+| `scheduler.py` | 예약 작업: 매일 DB 백업, 매월 리포트 메일 |
+| `webapp/demo.py` | 서버 없이 보는 체험판 HTML 생성 |
+| `deploy/` | Docker 이미지·compose(웹앱+예약 작업+Caddy HTTPS)·외부 접속 안내 |
 | `webapp/app.py` | HTTP API (FastAPI) |
 | `webapp/static/` | 화면 (단일 페이지 앱, 바닐라 JS + SVG 차트) |
 | `web_mockup/` | 1단계에서 만든 웹 대시보드 시안 원본과 데이터 |
@@ -163,5 +169,5 @@ python -m household_finance serve --db 우리집.db --host 0.0.0.0
 **계좌 삭제**: 잔액 기록·보유종목·부채·목표에서 쓰는 계좌는 삭제할 수 없습니다 (과거 재무상태표가 깨지지 않도록). 해지한 계좌는 잔액을 0으로 두고 메모에 '해지'라고 적으세요.
 
 ### 다음 단계 후보
-- 밖에서도 안전하게 접속 (HTTPS 배포 또는 사설 VPN 안내)
-- 월간 결산 리포트 정기 발송 (메일 등)
+- 은행·카드 내역 자동 수집 (현재는 파일 업로드)
+- 지출 패턴 분석 (전년 동월 비교, 카테고리별 추세)

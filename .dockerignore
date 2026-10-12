@@ -1,0 +1,12 @@
+# 웹앱 이미지에는 household_finance 코드와 requirements만 들어가면 된다
+.git
+**/__pycache__
+.pytest_cache
+.venv
+tests
+output
+data
+flying_geese
+*.db
+.env
+**/.env

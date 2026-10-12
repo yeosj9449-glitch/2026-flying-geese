@@ -11,7 +11,7 @@ import json
 import secrets
 import sqlite3
 from dataclasses import asdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from household_finance import schema as s
@@ -80,7 +80,8 @@ class Store:
         self.conn.close()
 
     def is_empty(self) -> bool:
-        return self.conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0] == 0
+        # 예약 작업 기록('_' 접두어)만 있는 DB도 가계 데이터는 비어 있는 것이다
+        return self.conn.execute("SELECT COUNT(*) FROM settings WHERE key = 'base_month'").fetchone()[0] == 0
 
     # ------------------------------------------------------------ 데이터셋 전체 저장/불러오기
     def replace_dataset(self, ds: Dataset) -> None:
@@ -300,6 +301,29 @@ class Store:
         with self.conn:
             self.conn.executemany("INSERT OR REPLACE INTO allocation VALUES (?,?)", list(targets.items()))
 
+    # ------------------------------------------------------------ 운영 기록·백업
+    def get_flag(self, key: str) -> str | None:
+        """예약 작업 기록 (예: 마지막으로 리포트를 보낸 달). 설정 테이블에 '_' 접두어로 둔다."""
+        row = self.conn.execute("SELECT value FROM settings WHERE key = ?", ("_" + key,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def set_flag(self, key: str, value: str) -> None:
+        with self.conn:
+            self.conn.execute("INSERT OR REPLACE INTO settings VALUES (?,?)", ("_" + key, json.dumps(value)))
+
+    def backup(self, folder: str | Path, keep: int = 30) -> Path:
+        """사용 중에도 안전한 SQLite 온라인 백업. 오래된 백업은 keep개만 남긴다."""
+        folder = Path(folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        dest = folder / f"{Path(self.path).stem}_{date.today().isoformat()}.db"
+        target = sqlite3.connect(dest)
+        with target:
+            self.conn.backup(target)
+        target.close()
+        for old in sorted(folder.glob(f"{Path(self.path).stem}_*.db"))[:-keep]:
+            old.unlink()
+        return dest
+
     # ------------------------------------------------------------ 로그인 계정
     @staticmethod
     def _hash(password: str, salt: str) -> str:
@@ -319,22 +343,35 @@ class Store:
     def users(self) -> list[dict]:
         return [dict(r) for r in self.conn.execute("SELECT id, username, member FROM users ORDER BY id")]
 
+    SESSION_DAYS = 30
+
+    @staticmethod
+    def _token_hash(token: str) -> str:
+        """세션 토큰은 해시만 저장한다 - DB 파일이 새어도 로그인 상태를 훔칠 수 없게."""
+        return hashlib.sha256(token.encode()).hexdigest()
+
     def login(self, username: str, password: str) -> str | None:
         row = self.conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-        if row is None or not hmac.compare_digest(row["pw_hash"], self._hash(password, row["salt"])):
+        if row is None:
+            self._hash(password, secrets.token_hex(16))   # 없는 아이디도 같은 시간이 걸리게 (아이디 존재 여부 노출 방지)
+            return None
+        if not hmac.compare_digest(row["pw_hash"], self._hash(password, row["salt"])):
             return None
         token = secrets.token_urlsafe(32)
         with self.conn:
-            self.conn.execute("INSERT INTO sessions VALUES (?,?,?)", (token, row["id"], date.today().isoformat()))
+            self.conn.execute("INSERT INTO sessions VALUES (?,?,?)", (self._token_hash(token), row["id"], date.today().isoformat()))
+            self.conn.execute("DELETE FROM sessions WHERE created < ?",
+                              ((date.today() - timedelta(days=self.SESSION_DAYS)).isoformat(),))
         return token
 
     def session_user(self, token: str | None) -> dict | None:
         if not token:
             return None
+        oldest = (date.today() - timedelta(days=self.SESSION_DAYS)).isoformat()
         row = self.conn.execute("SELECT u.id, u.username, u.member FROM sessions s JOIN users u ON u.id = s.user_id "
-                                "WHERE s.token = ?", (token,)).fetchone()
+                                "WHERE s.token = ? AND s.created >= ?", (self._token_hash(token), oldest)).fetchone()
         return dict(row) if row else None
 
     def logout(self, token: str) -> None:
         with self.conn:
-            self.conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+            self.conn.execute("DELETE FROM sessions WHERE token = ?", (self._token_hash(token),))
