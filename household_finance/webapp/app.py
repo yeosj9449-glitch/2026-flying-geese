@@ -11,12 +11,13 @@ import tempfile
 from datetime import date
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from starlette.background import BackgroundTask
 
+from household_finance import prices
 from household_finance import schema as s
 from household_finance.engine import compute, shift_month
 from household_finance.importer import plan_import, read_statement
@@ -103,9 +104,78 @@ class PriceIn(BaseModel):
     price: float = Field(ge=0)
 
 
+# 계좌·보유종목·부채·목표·보험·일정 - 화면의 추가/수정 양식이 보내는 전체 값
+class AccountIn(BaseModel):
+    id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,12}$")
+    name: str = Field(min_length=1, max_length=60)
+    institution: str = Field(default="", max_length=60)
+    type: str
+    owner: str
+    liquidity: str
+    memo: str = Field(default="", max_length=200)
+
+
+class HoldingIn(BaseModel):
+    account_id: str
+    name: str = Field(min_length=1, max_length=80)
+    code: str = Field(default="", max_length=30)
+    asset_class: str
+    qty: float = Field(ge=0)
+    avg_price: float = Field(ge=0)
+    price: float = Field(ge=0)
+
+
+class DebtIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    account_id: str
+    rate: float = Field(ge=0, le=1)
+    maturity: date | None = None
+    method: str = Field(default="", max_length=30)
+    payment: int = Field(ge=0)
+
+
+class GoalIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    owner: str
+    target: int | None = Field(default=None, ge=0)     # 비워 두면 비상자금처럼 자동 계산
+    start: date
+    end: date
+    accounts: list[str] = Field(default_factory=list, max_length=3)
+
+
+class InsuranceIn(BaseModel):
+    insured: str
+    insurer: str = Field(default="", max_length=60)
+    product: str = Field(default="", max_length=80)
+    coverages: dict[str, int] = Field(default_factory=dict)
+    premium: int = Field(ge=0)
+    maturity: date | None = None
+    renewable: str = Field(default="N", pattern="^(Y|N)$")
+
+
+class EventIn(BaseModel):
+    day: date
+    desc: str = Field(min_length=1, max_length=80)
+    kind: str
+    amount: int = Field(default=0, ge=0)
+    member: str
+
+
+ENTITY_MODELS = {"accounts": AccountIn, "holdings": HoldingIn, "debts": DebtIn, "goals": GoalIn,
+                 "insurances": InsuranceIn, "events": EventIn}
+
+
+class AllocationIn(BaseModel):
+    targets: dict[str, float]
+
+
+class RefreshIn(BaseModel):
+    dry_run: bool = False
+
+
 # ---------------------------------------------------------------- 앱
-def create_app(db_path: str | Path, today: date | None = None) -> FastAPI:
-    """today는 테스트에서 날짜를 고정할 때만 쓴다 (기본: 실행 시점의 오늘)."""
+def create_app(db_path: str | Path, today: date | None = None, price_fetcher=None) -> FastAPI:
+    """today·price_fetcher는 테스트에서 날짜와 시세 조회를 고정할 때만 쓴다."""
     store = Store(db_path)
     app = FastAPI(title="우리집 주식회사", docs_url=None, redoc_url=None)
     app.state.store = store
@@ -209,6 +279,9 @@ def create_app(db_path: str | Path, today: date | None = None) -> FastAPI:
         ds = data()
         months = sorted(set(store.snapshot_months()) | {t.month for t in ds.transactions} | {ds.settings.base_month})
         return {"base_month": ds.settings.base_month, "months": months, "owners": s.OWNERS, "views": s.VIEW_OPTIONS,
+                "members": s.MEMBERS, "account_types": s.ACCOUNT_TYPES, "liquidity": s.LIQUIDITY,
+                "asset_classes": s.ASSET_CLASSES, "coverages": s.COVERAGES, "event_kinds": s.EVENT_KINDS,
+                "allocation": ds.allocation,
                 "groups": s.GROUPS, "categories": [c.__dict__ for c in ds.categories],
                 "accounts": [a.__dict__ for a in ds.accounts], "settings": ds.settings.__dict__}
 
@@ -371,4 +444,126 @@ def create_app(db_path: str | Path, today: date | None = None) -> FastAPI:
             raise HTTPException(404, str(exc)) from exc
         return {"ok": True}
 
+    # ------------------------------------------------------------ 계좌·보유종목·부채·목표·보험·일정
+    def validate_entity(kind: str, item, editing_key=None) -> dict:
+        accounts = {a.id: a for a in store.load_dataset().accounts}
+        def need(ok: bool, msg: str) -> None:
+            if not ok:
+                raise HTTPException(422, msg)
+
+        if kind == "accounts":
+            need(item.type in s.ACCOUNT_TYPES, f"유형은 {', '.join(s.ACCOUNT_TYPES)} 중 하나입니다.")
+            need(item.owner in s.OWNERS, f"소유자는 {', '.join(s.OWNERS)} 중 하나입니다.")
+            need(item.liquidity in s.LIQUIDITY, f"유동성은 {', '.join(s.LIQUIDITY)} 중 하나입니다.")
+            need(editing_key is None or item.id == editing_key, "계좌ID는 바꿀 수 없습니다.")
+        if kind in ("holdings", "debts"):
+            need(item.account_id in accounts, f"없는 계좌입니다: {item.account_id}")
+        if kind == "holdings":
+            need(item.asset_class in s.ASSET_CLASSES, f"자산군은 {', '.join(s.ASSET_CLASSES)} 중 하나입니다.")
+        if kind == "debts":
+            need(accounts[item.account_id].type == s.LIABILITY, "부채는 유형이 '부채'인 계좌에 연결해야 합니다.")
+        if kind == "goals":
+            need(item.owner in s.MEMBERS, f"담당은 {', '.join(s.MEMBERS)} 중 하나입니다.")
+            need(item.end > item.start, "목표일은 시작일보다 뒤여야 합니다.")
+            missing = [a for a in item.accounts if a not in accounts]
+            need(not missing, f"없는 계좌입니다: {', '.join(missing)}")
+        if kind == "insurances":
+            need(item.insured in s.MEMBERS, f"피보험자는 {', '.join(s.MEMBERS)} 중 하나입니다.")
+            bad = set(item.coverages) - set(s.COVERAGES)
+            need(not bad, f"보장항목은 {', '.join(s.COVERAGES)} 중에서 고릅니다.")
+        if kind == "events":
+            need(item.kind in s.EVENT_KINDS, f"구분은 {', '.join(s.EVENT_KINDS)} 중 하나입니다.")
+            need(item.member in s.OWNERS, f"구성원은 {', '.join(s.OWNERS)} 중 하나입니다.")
+        return item.model_dump()
+
+    def parse_entity(kind: str, body: dict):
+        if kind not in ENTITY_MODELS:
+            raise HTTPException(404, f"편집할 수 없는 항목입니다: {kind}")
+        try:
+            return ENTITY_MODELS[kind].model_validate(body)
+        except ValidationError as exc:
+            raise HTTPException(422, "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors())) from exc
+
+    def entity_key(kind: str, key: str):
+        return key if kind == "accounts" else int(key) if key.isdigit() else -1
+
+    @app.get("/api/entities/{kind}")
+    def list_entities(kind: str, u: dict = Depends(user)):
+        if kind not in ENTITY_MODELS:
+            raise HTTPException(404, f"편집할 수 없는 항목입니다: {kind}")
+        return store.list_entities(kind)
+
+    @app.post("/api/entities/{kind}")
+    def create_entity(kind: str, body: dict = Body(...), u: dict = Depends(user)):
+        data_ = validate_entity(kind, parse_entity(kind, body))
+        try:
+            return {"id": store.create_entity(kind, data_)}
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+    @app.put("/api/entities/{kind}/{key}")
+    def update_entity(kind: str, key: str, body: dict = Body(...), u: dict = Depends(user)):
+        data_ = validate_entity(kind, parse_entity(kind, body), editing_key=key if kind == "accounts" else None)
+        try:
+            store.update_entity(kind, entity_key(kind, key), data_)
+        except KeyError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        return {"ok": True}
+
+    @app.delete("/api/entities/{kind}/{key}")
+    def delete_entity(kind: str, key: str, u: dict = Depends(user)):
+        if kind not in ENTITY_MODELS:
+            raise HTTPException(404, f"편집할 수 없는 항목입니다: {kind}")
+        try:
+            store.delete_entity(kind, entity_key(kind, key))
+        except KeyError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return {"ok": True}
+
+    @app.put("/api/allocation")
+    def save_allocation(body: AllocationIn, u: dict = Depends(user)):
+        if set(body.targets) != set(s.ASSET_CLASSES):
+            raise HTTPException(422, f"자산군 {', '.join(s.ASSET_CLASSES)}의 목표 비중을 모두 보내야 합니다.")
+        if any(v < 0 for v in body.targets.values()) or abs(sum(body.targets.values()) - 1) > 0.001:
+            raise HTTPException(422, "목표 비중의 합은 100%여야 합니다.")
+        store.set_allocation(body.targets)
+        return {"ok": True}
+
+    # ------------------------------------------------------------ 시세 갱신
+    def apply_prices(report: dict, dry_run: bool) -> dict:
+        if not dry_run:
+            for item in report["updated"]:
+                store.set_holding_price(item["id"], item["new"])
+        return {**report, "dry_run": dry_run}
+
+    @app.post("/api/prices/refresh")
+    def refresh_prices(body: RefreshIn, u: dict = Depends(user)):
+        fetch = price_fetcher or prices.fetch_naver
+        return apply_prices(prices.refresh(store.list_entities("holdings"), fetch), body.dry_run)
+
+    @app.post("/api/prices/upload")
+    async def upload_prices(file: UploadFile = File(...), dry_run: bool = Form(False), u: dict = Depends(user)):
+        path = await read_upload(file, (".csv",))
+        try:
+            raw = path.read_bytes()
+            text = next((raw.decode(enc) for enc in ("utf-8-sig", "cp949") if _decodes(raw, enc)), None)
+            if text is None:
+                raise HTTPException(422, "파일 인코딩을 알 수 없습니다.")
+            table = prices.parse_price_csv(text)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        finally:
+            path.unlink(missing_ok=True)
+        return apply_prices(prices.match_prices(store.list_entities("holdings"), table), dry_run)
+
     return app
+
+
+def _decodes(raw: bytes, encoding: str) -> bool:
+    try:
+        raw.decode(encoding)
+        return True
+    except UnicodeDecodeError:
+        return False

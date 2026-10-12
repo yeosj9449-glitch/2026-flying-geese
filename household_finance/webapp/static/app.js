@@ -187,7 +187,7 @@
   }
 
   // ---------------------------------------------------------------- 공통 화면 틀
-  const ROUTES = [['dashboard', '대시보드'], ['transactions', '거래내역'], ['import', '내역 가져오기'], ['close', '월말 결산'], ['budget', '예산'], ['settings', '설정']];
+  const ROUTES = [['dashboard', '대시보드'], ['transactions', '거래내역'], ['import', '내역 가져오기'], ['close', '월말 결산'], ['plan', '자산·계획'], ['budget', '예산'], ['report', '결산 리포트'], ['settings', '설정']];
 
   function shell(content) {
     const nav = h('nav', { class: 'nav', 'aria-label': '메뉴' }, ROUTES.map(([id, name]) => h('a', { href: `#/${id}`, 'aria-current': state.route === id ? 'page' : null }, name)));
@@ -506,6 +506,250 @@
           h('button', { class: 'btn', onclick: async () => { try { await api('/api/users', { body: { username: nu.username.value, password: nu.password.value, member: nu.member.value } }); toast('계정을 저장했습니다'); renderSettings(); } catch (e) { toast(e.message); } } }, '계정 저장')))]);
   }
 
+  // ---------------------------------------------------------------- 자산·계획 (계좌·보유종목·부채·목표·보험·일정 편집)
+  const acctOptions = (types) => state.meta.accounts.filter((a) => !types || types.includes(a.type)).map((a) => [a.id, `${a.id} · ${a.name}`]);
+  const ENTITY = {
+    accounts: {
+      title: '계좌', note: '가족의 모든 계좌·자산·부채. 월말 결산과 재무상태표가 이 목록을 씁니다. 계좌ID는 나중에 바꿀 수 없습니다.',
+      key: 'id', label: (r) => r.name,
+      fields: [
+        { k: 'id', label: '계좌ID', type: 'text', lock: true, placeholder: '예: A07' },
+        { k: 'name', label: '계좌명', type: 'text' },
+        { k: 'institution', label: '기관', type: 'text' },
+        { k: 'type', label: '유형', type: 'select', options: () => state.meta.account_types },
+        { k: 'owner', label: '소유자', type: 'select', options: () => state.meta.owners },
+        { k: 'liquidity', label: '유동성', type: 'select', options: () => state.meta.liquidity, hint: '즉시 = 오늘 꺼낼 수 있음' },
+        { k: 'memo', label: '메모', type: 'text' },
+      ],
+    },
+    holdings: {
+      title: '보유종목', note: '수량·평균단가·현재가로 자산배분과 수익률을 계산합니다. 국내 상장 종목은 시세코드(KRX:005930)를 넣으면 자동 갱신됩니다.',
+      key: 'id', label: (r) => r.name,
+      fields: [
+        { k: 'account_id', label: '계좌', type: 'select', options: () => acctOptions(['투자', '연금']) },
+        { k: 'name', label: '종목명', type: 'text' },
+        { k: 'code', label: '시세코드', type: 'text', placeholder: 'KRX:005930' },
+        { k: 'asset_class', label: '자산군', type: 'select', options: () => state.meta.asset_classes },
+        { k: 'qty', label: '수량', type: 'number' },
+        { k: 'avg_price', label: '평균단가', type: 'money' },
+        { k: 'price', label: '현재가', type: 'money' },
+      ],
+    },
+    debts: {
+      title: '부채', note: '잔액은 월말 결산의 잔액을 씁니다. 여기에는 금리·만기·월 원리금을 적습니다 (DSR·금리 상승 시뮬레이션에 사용).',
+      key: 'id', label: (r) => r.name,
+      fields: [
+        { k: 'name', label: '대출명', type: 'text' },
+        { k: 'account_id', label: '부채 계좌', type: 'select', options: () => acctOptions(['부채']) },
+        { k: 'rate', label: '금리 (연 %)', type: 'pct' },
+        { k: 'maturity', label: '만기일', type: 'date', optional: true },
+        { k: 'method', label: '상환방식', type: 'text', placeholder: '원리금균등' },
+        { k: 'payment', label: '월 원리금', type: 'money' },
+      ],
+    },
+    goals: {
+      title: '목표', note: '연결계좌의 잔액 합으로 진척률을 계산합니다. 목표금액을 비워 두면 비상자금처럼 "목표 개월수 × 필수지출"로 자동 계산합니다.',
+      key: 'id', label: (r) => r.name,
+      fields: [
+        { k: 'name', label: '목표명', type: 'text' },
+        { k: 'owner', label: '담당', type: 'select', options: () => state.meta.members },
+        { k: 'target', label: '목표금액 (비우면 자동)', type: 'money', optional: true },
+        { k: 'start', label: '시작일', type: 'date' },
+        { k: 'end', label: '목표일', type: 'date' },
+        { k: 'accounts', label: '연결계좌 (최대 3개)', type: 'accounts' },
+      ],
+    },
+    insurances: {
+      title: '보험', note: '보장금액을 넣으면 대시보드가 구성원별 보장 공백을 찾아냅니다. 0 또는 빈칸은 보장 없음입니다.',
+      key: 'id', label: (r) => `${r.insured} · ${r.product}`,
+      fields: [
+        { k: 'insured', label: '피보험자', type: 'select', options: () => state.meta.members },
+        { k: 'insurer', label: '보험사', type: 'text' },
+        { k: 'product', label: '상품명', type: 'text' },
+        { k: 'coverages', label: '보장금액', type: 'coverages' },
+        { k: 'premium', label: '월보험료', type: 'money' },
+        { k: 'maturity', label: '만기일', type: 'date', optional: true },
+        { k: 'renewable', label: '갱신형', type: 'select', options: () => [['N', '아니오'], ['Y', '예']] },
+      ],
+    },
+    events: {
+      title: '일정', note: '만기·세금·명절·성과급 같은 큰 돈의 흐름. 유입·유출은 6개월 현금흐름 예측에, 가까운 일정은 대시보드 알림에 들어갑니다.',
+      key: 'id', label: (r) => r.desc,
+      fields: [
+        { k: 'day', label: '일자', type: 'date' },
+        { k: 'desc', label: '내용', type: 'text' },
+        { k: 'kind', label: '구분', type: 'select', options: () => state.meta.event_kinds },
+        { k: 'amount', label: '금액', type: 'money', optional: true },
+        { k: 'member', label: '구성원', type: 'select', options: () => state.meta.owners },
+      ],
+    },
+  };
+  const ENTITY_ORDER = ['accounts', 'holdings', 'debts', 'goals', 'insurances', 'events'];
+
+  function showValue(f, v) {
+    if (f.type === 'money') return v == null ? (f.optional ? '자동' : '-') : won(v);
+    if (f.type === 'pct') return v == null ? '-' : (v * 100).toFixed(2) + '%';
+    if (f.type === 'accounts') return (v || []).join(', ') || '-';
+    if (f.type === 'coverages') return Object.entries(v || {}).filter(([, x]) => x > 0).map(([k, x]) => `${k} ${short(x)}`).join(' · ') || '없음';
+    if (f.type === 'select') { const o = f.options().find((x) => (Array.isArray(x) ? x[0] : x) === v); return Array.isArray(o) ? o[1] : (v ?? '-'); }
+    return v == null || v === '' ? '-' : String(v);
+  }
+
+  function entityForm(kind, row, done) {
+    const spec = ENTITY[kind], inputs = {};
+    const opt = (o, v) => { const [val, text] = Array.isArray(o) ? o : [o, o]; return h('option', { value: val, selected: val === v }, text); };
+    const cells = spec.fields.map((f) => {
+      const v = row ? row[f.k] : undefined;
+      let input;
+      if (f.type === 'select') input = h('select', null, f.options().map((o) => opt(o, v)));
+      else if (f.type === 'accounts') {
+        const picks = [0, 1, 2].map((i) => h('select', { 'aria-label': `${f.label} ${i + 1}` }, h('option', { value: '' }, '-'), acctOptions().map((o) => opt(o, (v || [])[i]))));
+        inputs[f.k] = { get: () => picks.map((p) => p.value).filter(Boolean) };
+        return h('label', { class: 'field', style: { gridColumn: '1 / -1' } }, f.label, h('div', { class: 'row' }, picks));
+      } else if (f.type === 'coverages') {
+        const each = Object.fromEntries(state.meta.coverages.map((c) => [c, h('input', { type: 'number', min: 0, class: 'amount', value: (v || {})[c] || '', placeholder: '0', 'aria-label': `${c} 보장금액` })]));
+        inputs[f.k] = { get: () => Object.fromEntries(Object.entries(each).map(([c, i]) => [c, Math.round(Number(i.value) || 0)])) };
+        return h('div', { class: 'field', style: { gridColumn: '1 / -1' } }, f.label, h('div', { class: 'form' }, Object.entries(each).map(([c, i]) => h('label', { class: 'field' }, c, i))));
+      } else {
+        const type = f.type === 'date' ? 'date' : ['money', 'number', 'pct'].includes(f.type) ? 'number' : 'text';
+        const shown = v == null ? '' : f.type === 'pct' ? +(v * 100).toFixed(4) : v;
+        input = h('input', { type, value: shown, step: 'any', min: type === 'number' ? 0 : null, placeholder: f.placeholder || null, disabled: Boolean(row && f.lock) });
+      }
+      inputs[f.k] = inputs[f.k] || { get: () => {
+        const raw = input.value.trim();
+        if (['money', 'number', 'pct'].includes(f.type)) {
+          if (raw === '') return f.optional ? null : 0;
+          const n = Number(raw);
+          return f.type === 'pct' ? n / 100 : f.type === 'money' ? Math.round(n) : n;
+        }
+        if (f.type === 'date') return raw || null;
+        return raw;
+      } };
+      return h('label', { class: 'field' }, f.label, input, f.hint ? h('span', { class: 'muted' }, f.hint) : null);
+    });
+    const err = h('p', { class: 'error' });
+    const save = async () => {
+      const body = Object.fromEntries(Object.entries(inputs).map(([k, i]) => [k, i.get()]));
+      if (kind === 'events' && body.amount == null) body.amount = 0;
+      try {
+        if (row) await api(`/api/entities/${kind}/${encodeURIComponent(row[spec.key])}`, { method: 'PUT', body });
+        else await api(`/api/entities/${kind}`, { body });
+        state.meta = await api('/api/meta');
+        toast(row ? '수정했습니다' : '추가했습니다');
+        done();
+      } catch (e) { err.textContent = e.message; }
+    };
+    return h('div', { class: 'card' }, h('h3', null, row ? `${spec.title} 수정: ${spec.label(row)}` : `${spec.title} 추가`),
+      h('div', { class: 'form' }, cells), err,
+      h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: save }, row ? '저장' : '추가'), h('button', { class: 'btn', onclick: done }, '취소')));
+  }
+
+  async function renderPlan() {
+    state.planTab ||= 'accounts';
+    const kind = state.planTab, spec = ENTITY[kind];
+    const tabs = h('div', { class: 'seg', role: 'group', 'aria-label': '편집할 항목' }, ENTITY_ORDER.map((k) =>
+      h('button', { type: 'button', 'aria-pressed': String(k === kind), onclick: () => { state.planTab = k; renderPlan(); } }, ENTITY[k].title)));
+    const formSlot = h('div');
+    const listCard = h('div', { class: 'card' }, h('p', { class: 'muted' }, '불러오는 중…'));
+    const extra = h('div', { class: 'section' });
+    shell([h('div', { class: 'head' }, h('div', null, h('p', { class: 'eyebrow' }, '계정과목·사업계획'), h('h1', null, '자산·계획'),
+      h('p', { class: 'take' }, spec.note)), tabs), formSlot, listCard, extra]);
+    const rows = await api(`/api/entities/${kind}`);
+    const shownFields = spec.fields.filter((f) => f.type !== 'coverages' || kind === 'insurances');
+    const reload = () => renderPlan();
+    const openForm = (row) => { formSlot.replaceChildren(entityForm(kind, row, reload)); formSlot.scrollIntoView({ block: 'nearest' }); };
+    listCard.replaceChildren(
+      h('div', { class: 'row', style: { justifyContent: 'space-between' } }, h('h3', null, `${spec.title} ${rows.length}건`), h('button', { class: 'btn primary', onclick: () => openForm(null) }, `${spec.title} 추가`)),
+      rows.length ? h('div', { class: 'table-wrap scroll' }, h('table', { class: 'nowrap' },
+        h('thead', null, h('tr', null, shownFields.map((f) => h('th', { class: ['money', 'number', 'pct'].includes(f.type) ? 'num' : null }, f.label)), h('th', null, ''))),
+        h('tbody', null, rows.map((r) => {
+          const del = h('button', { class: 'btn small danger', onclick: async () => {
+            if (del.dataset.confirm !== '1') { del.dataset.confirm = '1'; del.textContent = '한 번 더 눌러 삭제'; return; }
+            try { await api(`/api/entities/${kind}/${encodeURIComponent(r[spec.key])}`, { method: 'DELETE' }); state.meta = await api('/api/meta'); toast('삭제했습니다'); reload(); }
+            catch (e) { toast(e.message); del.dataset.confirm = ''; del.textContent = '삭제'; }
+          } }, '삭제');
+          return h('tr', null, shownFields.map((f) => h('td', { class: ['money', 'number', 'pct'].includes(f.type) ? 'num' : null }, showValue(f, r[f.k]))),
+            h('td', { class: 'num' }, h('button', { class: 'btn small', onclick: () => openForm(r) }, '수정'), ' ', del));
+        })))) : h('p', { class: 'empty' }, `아직 ${spec.title}이(가) 없습니다. 위의 추가 버튼으로 시작하세요.`));
+    if (kind === 'holdings') extra.append(priceCard(reload), allocationCard());
+  }
+
+  function priceCard(after) {
+    const out = h('div');
+    const show = (r) => out.replaceChildren(h('p', null, `${r.dry_run ? '갱신 예정' : '갱신'} ${r.updated.length}종목 · 건너뜀 ${r.skipped.length} · 실패 ${r.failed.length}`),
+      r.updated.length ? h('div', { class: 'table-wrap' }, h('table', null, h('thead', null, h('tr', null, h('th', null, '종목'), h('th', { class: 'num' }, '이전'), h('th', { class: 'num' }, '새 현재가'))),
+        h('tbody', null, r.updated.map((x) => h('tr', null, h('td', null, x.name), h('td', { class: 'num muted' }, x.old == null ? '-' : won(x.old)), h('td', { class: 'num' }, won(x.new))))))) : null,
+      r.failed.length ? h('p', { class: 'error' }, '실패: ' + r.failed.map((x) => `${x.name}(${x.reason})`).join(', ') + ' · 기존 가격을 유지했습니다. 시세 CSV를 올리거나 직접 입력하세요.') : null,
+      r.skipped.length ? h('p', { class: 'sub' }, '건너뜀: ' + r.skipped.map((x) => `${x.name}(${x.reason})`).join(', ')) : null);
+    const file = h('input', { type: 'file', accept: '.csv', 'aria-label': '시세 CSV' });
+    return h('section', { class: 'card' }, h('h3', null, '현재가 갱신'),
+      h('p', { class: 'sub' }, '자동 갱신은 네이버 금융 시세를 읽습니다(공식 API가 아니라 막히면 실패로 표시). 대신 "시세코드,현재가" 또는 "종목명,현재가" 두 열 CSV를 올려도 됩니다.'),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn primary', onclick: async () => { try { const r = await api('/api/prices/refresh', { body: { dry_run: false } }); show(r); if (r.updated.length) toast('현재가를 갱신했습니다'); } catch (e) { toast(e.message); } } }, '시세 자동 갱신'),
+        file, h('button', { class: 'btn', onclick: async () => {
+          if (!file.files[0]) { toast('CSV 파일을 고르세요'); return; }
+          const fd = new FormData(); fd.append('file', file.files[0]); fd.append('dry_run', 'false');
+          try { show(await api('/api/prices/upload', { body: fd })); toast('현재가를 반영했습니다'); } catch (e) { toast(e.message); }
+        } }, '시세 CSV 반영'),
+        h('button', { class: 'btn', onclick: after }, '목록 새로고침')), out);
+  }
+
+  function allocationCard() {
+    const t = state.meta.allocation;
+    const inputs = Object.fromEntries(state.meta.asset_classes.map((c) => [c, h('input', { type: 'number', min: 0, max: 100, step: 'any', class: 'amount', value: +((t[c] || 0) * 100).toFixed(2), 'aria-label': `${c} 목표 비중` })]));
+    const sum = h('p', { class: 'sub' });
+    const upd = () => { const s = Object.values(inputs).reduce((a, i) => a + (Number(i.value) || 0), 0); sum.textContent = `합계 ${s.toFixed(1)}%` + (Math.abs(s - 100) > 0.05 ? ' · 100%가 되어야 저장됩니다' : ''); };
+    Object.values(inputs).forEach((i) => i.addEventListener('input', upd)); upd();
+    return h('section', { class: 'card' }, h('h3', null, '목표 자산배분'), h('p', { class: 'sub' }, '분기마다 부부가 함께 점검하세요. 현재 비중이 목표에서 리밸런싱 밴드 이상 벗어나면 대시보드에 알림이 뜹니다.'),
+      h('div', { class: 'form' }, Object.entries(inputs).map(([c, i]) => h('label', { class: 'field' }, `${c} (%)`, i))), sum,
+      h('div', null, h('button', { class: 'btn primary', onclick: async () => {
+        const targets = Object.fromEntries(Object.entries(inputs).map(([c, i]) => [c, (Number(i.value) || 0) / 100]));
+        try { await api('/api/allocation', { method: 'PUT', body: { targets } }); state.meta = await api('/api/meta'); toast('목표 비중을 저장했습니다'); } catch (e) { toast(e.message); }
+      } }, '저장')));
+  }
+
+  // ---------------------------------------------------------------- 월간 결산 리포트 (인쇄용)
+  async function renderReport() {
+    const body = h('div', { class: 'section' }, h('p', { class: 'muted' }, '불러오는 중…'));
+    shell([h('div', { class: 'head no-print' }, h('div', null, h('p', { class: 'eyebrow' }, '가족회의 자료'), h('h1', null, '결산 리포트'),
+      h('p', { class: 'take' }, '월간 결산 때 부부가 함께 보는 한 장 요약입니다. 인쇄하거나 PDF로 저장해 보관하세요.')),
+      h('div', { class: 'row' }, monthSelect(renderReport), h('button', { class: 'btn primary', onclick: () => window.print() }, '인쇄 / PDF 저장'))), body]);
+    const d = await api(`/api/dashboard?view=전체&month=${state.month}`);
+    const rows = d.pnl.rows, i = rows.income.length - 1, avg = (k) => d.pnl.agg[k].O;
+    const card = Object.fromEntries(d.cards.map((c) => [c.kpi, c]));
+    const fmtCard = (c) => c.value == null ? '—' : c.format === 'won' ? won(c.value) + '원' : c.format === 'months' ? c.value.toFixed(1) + '개월' : pct(c.value);
+    const tbl = (head, trs) => h('div', { class: 'table-wrap' }, h('table', null, h('thead', null, h('tr', null, head.map((x, j) => h('th', { class: j ? 'num' : null }, x)))), h('tbody', null, trs)));
+    const tr = (cells) => h('tr', null, cells.map((c, j) => h('td', { class: j ? 'num' : null }, c)));
+    const cur = d.balance.current, prev = d.balance.previous;
+    const pnlLine = (label, k, isPct) => tr([label, isPct ? pct(rows[k][i]) : won(rows[k][i]), isPct ? pct(rows[k][i - 1]) : won(rows[k][i - 1]),
+      isPct ? pct(d.pnl.agg.saving_rate.N) : won(avg(k))]);
+    const over = d.budget.rows.filter((r) => /초과/.test(r.status));
+    const upcoming = d.events.filter((e) => e.dday >= 0 && e.dday <= 62);
+    body.replaceChildren(h('article', { class: 'card report' },
+      h('p', { class: 'eyebrow' }, `작성 ${d.today} · 기준 ${monthTitle(d.base_month)} 말`),
+      h('h2', { style: { fontSize: '22px' } }, `우리집 주식회사 ${monthTitle(d.base_month)} 월간 결산`),
+      h('p', null, `순자산 ${won(cur.net)}원(전월 대비 ${cur.net - prev.net >= 0 ? '+' : ''}${won(cur.net - prev.net)}원), 저축률 ${pct(rows.saving_rate[i])}, 투자 납입 ${won(rows.invest[i])}원. 점검 알림 ${d.alerts.length}건.`),
+      h('h3', null, '1. 핵심 지표'),
+      tbl(['지표', '값', '참고', '상태'], KPI_ORDER.map((k) => h('tr', null, h('td', null, card[k].label), h('td', { class: 'num' }, fmtCard(card[k])), h('td', { class: 'num muted' }, card[k].note), h('td', { class: 'num' }, pill(card[k].status))))),
+      h('h3', null, '2. 손익 (이번 달 · 전월 · 12개월 평균)'),
+      tbl(['항목', monthTitle(d.base_month), monthTitle(d.pnl.months[i - 1]), '12개월 평균'], [
+        pnlLine('소득', 'income'), pnlLine('고정비', 'fixed'), pnlLine('변동비', 'variable'), pnlLine('비정기비', 'irregular'),
+        pnlLine('소비지출 합계', 'consumption'), pnlLine('잉여 (소득-소비)', 'surplus'), pnlLine('저축률', 'saving_rate', true), pnlLine('투자 납입', 'invest')]),
+      h('h3', null, '3. 재무상태 (월말 잔액)'),
+      tbl(['항목', '이번 달', '전월', '증감'], [['총자산', 'assets'], ['총부채', 'liabilities'], ['순자산', 'net'], ['투자+연금', 'invest'], ['비상자금(즉시 현금)', 'emergency']]
+        .map(([l, k]) => tr([l, won(cur[k]), won(prev[k]), (cur[k] - prev[k] >= 0 ? '+' : '') + won(cur[k] - prev[k])]))),
+      tbl(['구성원', '자산', '부채', '순자산'], d.balance.members.map((m) => tr([m.member, won(m.assets), won(m.debt), won(m.net)]))),
+      h('h3', null, '4. 예산 통제'),
+      over.length ? tbl(['초과 카테고리', '예산', '실적', '집행률'], over.map((r) => tr([r.category, won(r.period_budget), won(r.actual), pct(r.rate, 0)]))) : h('p', null, '예산을 넘은 카테고리가 없습니다.'),
+      h('h3', null, '5. 목표 진척'),
+      tbl(['목표', '현재 / 목표', '진척률', '필요 월적립', '상태'], d.goals.rows.map((g) => h('tr', null, h('td', null, g.name), h('td', { class: 'num' }, `${short(g.current)} / ${short(g.target)}`),
+        h('td', { class: 'num' }, `${pct(g.progress, 0)} (계획 ${pct(g.plan, 0)})`), h('td', { class: 'num' }, g.monthly_needed == null ? '-' : won(g.monthly_needed) + '원'), h('td', { class: 'num' }, pill(g.status))))),
+      h('h3', null, '6. 다음 달 할 일'),
+      h('ul', { class: 'checklist' }, [...d.alerts.filter((a) => !a.startsWith('🗓')).map(clean), ...upcoming.map((e) => `${e.day} ${e.desc}${e.amount ? ` (${e.kind} ${won(e.amount)}원)` : ''}`)].map((x) => h('li', null, x))),
+      h('h3', null, '7. 이번 달 결정 사항'),
+      h('div', { class: 'memo' }, [1, 2, 3].map(() => h('div', { class: 'line' })))));
+  }
+
   // ---------------------------------------------------------------- 로그인·처음 설정
   function renderLogin() {
     const u = h('input', { type: 'text', autocomplete: 'username', id: 'login-user' });
@@ -534,7 +778,7 @@
   }
 
   // ---------------------------------------------------------------- 시작·라우팅
-  const RENDER = { dashboard: renderDashboard, transactions: renderTransactions, import: renderImport, close: renderClose, budget: renderBudget, settings: renderSettings };
+  const RENDER = { dashboard: renderDashboard, transactions: renderTransactions, import: renderImport, close: renderClose, plan: renderPlan, budget: renderBudget, report: renderReport, settings: renderSettings };
 
   function route() {
     if (!state.me) return;

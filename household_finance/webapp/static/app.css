@@ -154,3 +154,20 @@ details > summary { cursor: pointer; color: var(--accent); }
   .kpi, .card { animation: rise .35s ease-out both; }
   @keyframes rise { from { transform: translateY(4px); opacity: .6; } }
 }
+
+/* 결산 리포트: 화면에서는 카드, 인쇄하면 메뉴를 빼고 종이 한 장 흐름으로 */
+.report { gap: 12px; }
+.report h3 { margin-top: 8px; }
+.checklist { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 6px; }
+.checklist li { display: grid; grid-template-columns: 16px 1fr; gap: 8px; }
+.checklist li::before { content: ""; width: 12px; height: 12px; border: 1.5px solid var(--muted); border-radius: 3px; margin-top: 4px; }
+.memo { display: grid; gap: 22px; padding-top: 10px; }
+.memo .line { border-bottom: 1px solid var(--line); }
+@media print {
+  :root { --bg: #fff; --panel: #fff; --fg: #000; --muted: #444; --line: #ccc; --soft: #f2f2f2; color-scheme: light; }
+  .bar, .no-print, #toast { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .card { border: 0; padding: 0; animation: none; }
+  .report h3 { break-after: avoid; }
+  tr { break-inside: avoid; }
+}

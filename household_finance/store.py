@@ -48,6 +48,18 @@ DATA_TABLES = ["settings", "categories", "rules", "accounts", "snapshots", "tran
                "allocation", "debts", "goals", "insurances", "events"]
 
 
+# 웹 화면에서 편집하는 항목: 테이블, 키, 열, JSON으로 저장하는 열
+ENTITIES = {
+    "accounts": {"key": "id", "cols": ["id", "name", "institution", "type", "owner", "liquidity", "memo"], "json": []},
+    "holdings": {"key": "id", "cols": ["account_id", "name", "code", "asset_class", "qty", "avg_price", "price"], "json": []},
+    "debts": {"key": "id", "cols": ["name", "account_id", "rate", "maturity", "method", "payment"], "json": []},
+    "goals": {"key": "id", "cols": ["name", "owner", "target", "start", "end", "accounts"], "json": ["accounts"]},
+    "insurances": {"key": "id", "cols": ["insured", "insurer", "product", "coverages", "premium", "maturity", "renewable"],
+                   "json": ["coverages"]},
+    "events": {"key": "id", "cols": ["day", "desc", "kind", "amount", "member"], "json": []},
+}
+
+
 def _iso(d: date | None) -> str | None:
     return d.isoformat() if d else None
 
@@ -215,6 +227,78 @@ class Store:
         if self.conn.execute("UPDATE holdings SET price = ? WHERE id = ?", (price, holding_id)).rowcount == 0:
             raise KeyError(f"보유종목 {holding_id}를 찾을 수 없습니다.")
         self.conn.commit()
+
+    # ------------------------------------------------------------ 계좌·보유종목·부채·목표·보험·일정 편집
+    def _spec(self, kind: str) -> dict:
+        if kind not in ENTITIES:
+            raise KeyError(f"편집할 수 없는 항목입니다: {kind}")
+        return ENTITIES[kind]
+
+    def _encode(self, spec: dict, data: dict) -> dict:
+        out = {}
+        for col in spec["cols"]:
+            if col in data:
+                v = data[col]
+                out[col] = (json.dumps(v, ensure_ascii=False) if col in spec["json"]
+                            else v.isoformat() if isinstance(v, date) else v)
+        return out
+
+    def list_entities(self, kind: str) -> list[dict]:
+        spec = self._spec(kind)
+        order = "sort, id" if kind == "accounts" else "id"
+        rows = []
+        for r in self.conn.execute(f"SELECT * FROM {kind} ORDER BY {order}"):
+            row = {k: r[k] for k in r.keys() if k != "sort"}
+            for col in spec["json"]:
+                row[col] = json.loads(row[col]) if row[col] else ([] if col == "accounts" else {})
+            rows.append(row)
+        return rows
+
+    def create_entity(self, kind: str, data: dict):
+        spec = self._spec(kind)
+        values = self._encode(spec, data)
+        if kind == "accounts":
+            values["sort"] = self.conn.execute("SELECT COALESCE(MAX(sort), 0) + 1 FROM accounts").fetchone()[0]
+            if self.conn.execute("SELECT 1 FROM accounts WHERE id = ?", (values["id"],)).fetchone():
+                raise ValueError(f"계좌ID {values['id']}가 이미 있습니다.")
+        cols = ", ".join(values)
+        with self.conn:
+            cur = self.conn.execute(f"INSERT INTO {kind} ({cols}) VALUES ({', '.join('?' * len(values))})", list(values.values()))
+        return values["id"] if kind == "accounts" else cur.lastrowid
+
+    def update_entity(self, kind: str, key, data: dict) -> None:
+        spec = self._spec(kind)
+        values = self._encode(spec, {k: v for k, v in data.items() if k != spec["key"]})
+        if not values:
+            return
+        sets = ", ".join(f"{c} = ?" for c in values)
+        with self.conn:
+            if self.conn.execute(f"UPDATE {kind} SET {sets} WHERE {spec['key']} = ?", (*values.values(), key)).rowcount == 0:
+                raise KeyError(f"{key}를 찾을 수 없습니다.")
+
+    def account_references(self, account_id: str) -> dict[str, int]:
+        """계좌를 쓰고 있는 곳 (삭제 전 확인용)."""
+        q = lambda sql: self.conn.execute(sql, (account_id,)).fetchone()[0]
+        refs = {"잔액 기록": q("SELECT COUNT(*) FROM snapshots WHERE account_id = ?"),
+                "보유종목": q("SELECT COUNT(*) FROM holdings WHERE account_id = ?"),
+                "부채": q("SELECT COUNT(*) FROM debts WHERE account_id = ?"),
+                "목표": sum(1 for (a,) in self.conn.execute("SELECT accounts FROM goals") if account_id in json.loads(a or "[]"))}
+        return {k: v for k, v in refs.items() if v}
+
+    def delete_entity(self, kind: str, key) -> None:
+        spec = self._spec(kind)
+        if kind == "accounts":
+            refs = self.account_references(key)
+            if refs:
+                raise ValueError("이 계좌는 " + ", ".join(f"{k} {v}건" for k, v in refs.items())
+                                 + "에서 쓰이고 있어 삭제할 수 없습니다. 해지한 계좌라면 잔액을 0으로 두고 메모에 '해지'라고 적으세요.")
+        with self.conn:
+            if self.conn.execute(f"DELETE FROM {kind} WHERE {spec['key']} = ?", (key,)).rowcount == 0:
+                raise KeyError(f"{key}를 찾을 수 없습니다.")
+
+    def set_allocation(self, targets: dict[str, float]) -> None:
+        with self.conn:
+            self.conn.executemany("INSERT OR REPLACE INTO allocation VALUES (?,?)", list(targets.items()))
 
     # ------------------------------------------------------------ 로그인 계정
     @staticmethod
