@@ -15,3 +15,6 @@ data/live/*.csv
 # 수동 리서치 상품 선정(product_selection.py)에 채워 넣는 실제 조사 값도 마찬가지.
 data/manual/*.json
 !data/manual/*.example.json
+
+# 어필리에이트 게시물 초안 (운영자 검수 전 산출물)
+output/affiliate_drafts/

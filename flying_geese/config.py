@@ -60,6 +60,23 @@ class Settings:
     )
     commerce_api_key: str = field(default_factory=lambda: _env("COMMERCE_API_KEY"))
 
+    # --- 쿠팡 파트너스 어필리에이트 ---
+    coupang_partners_access_key: str = field(
+        default_factory=lambda: _env("COUPANG_PARTNERS_ACCESS_KEY")
+    )
+    coupang_partners_secret_key: str = field(
+        default_factory=lambda: _env("COUPANG_PARTNERS_SECRET_KEY")
+    )
+    coupang_partners_sub_id: str = field(
+        default_factory=lambda: _env("COUPANG_PARTNERS_SUB_ID")
+    )
+    coupang_partners_commission_rate: float = field(
+        default_factory=lambda: _env_float("COUPANG_PARTNERS_COMMISSION_RATE", 0.03)
+    )
+    affiliate_target_monthly_commission: int = field(
+        default_factory=lambda: _env_int("AFFILIATE_TARGET_MONTHLY_COMMISSION", 1_000_000)
+    )
+
     # --- 비즈니스 규칙 파라미터 ---
     price_surge_exclude_pct: float = field(
         default_factory=lambda: _env_float("PRICE_SURGE_EXCLUDE_PCT", 20.0)
@@ -91,6 +108,9 @@ class Settings:
 
     def naver_datalab_ready(self) -> bool:
         return bool(self.naver_datalab_client_id and self.naver_datalab_client_secret)
+
+    def coupang_partners_ready(self) -> bool:
+        return bool(self.coupang_partners_access_key and self.coupang_partners_secret_key)
 
     def naver_searchad_ready(self) -> bool:
         return bool(
