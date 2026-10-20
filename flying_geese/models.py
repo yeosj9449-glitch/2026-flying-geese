@@ -168,8 +168,8 @@ class SourcingStage(str, Enum):
 class SourcingGrade(str, Enum):
     KIDS = "S 키즈전용"  # 필수 1·2 통과 + 아이 기준(3) 전부 확인
     PASS = "A 입점가능"  # 필수 1·2 통과
-    FIXABLE = "B 보완필요"  # 인증은 있으나 조회/검사서 등 서류가 아직 미비
-    REJECT = "X 입점불가"  # 허용 인증 자체가 없음
+    FIXABLE = "B 보완필요"  # 인증 미확인이거나, 인증은 있으나 조회/검사서 등 서류가 미비
+    REJECT = "X 입점불가"  # 허용되지 않는 인증만 보유 (예: GAP)
 
 
 @dataclass

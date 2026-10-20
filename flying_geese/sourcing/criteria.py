@@ -76,8 +76,9 @@ def evaluate_lead(
     cert = normalize_cert(lead.cert_type)
     cert_type_allowed = cert in {normalize_cert(c) for c in allowed_certs_for(lead.product_type)}
     cert_ok = cert_type_allowed
+    cert_unknown = not lead.cert_type.strip()
     if not cert_type_allowed:
-        missing.append("허용 인증 없음" if not lead.cert_type else f"허용되지 않는 인증({lead.cert_type})")
+        missing.append("인증 미확인" if cert_unknown else f"허용되지 않는 인증({lead.cert_type})")
         actions.append(
             f"인증 종류 확인 요청 - {lead.product_type} 허용 인증: "
             + "/".join(sorted(allowed_certs_for(lead.product_type)))
@@ -157,7 +158,8 @@ def evaluate_lead(
         grade = SourcingGrade.KIDS
     elif mandatory_ok:
         grade = SourcingGrade.PASS
-    elif cert_type_allowed:
+    elif cert_type_allowed or cert_unknown:
+        # 인증 정보를 아직 못 받은 발굴 단계 리드는 '불가'가 아니라 '확인 필요'
         grade = SourcingGrade.FIXABLE
     else:
         grade = SourcingGrade.REJECT

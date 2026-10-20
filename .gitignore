@@ -19,6 +19,8 @@ data/manual/*.json
 # 소싱 관리 실데이터(농가 연락처 등 개인정보)와 누적 이력 - 예시 템플릿만 버전관리
 data/sourcing/*.csv
 !data/sourcing/*.example.csv
+# 웹 공개 정보로만 만든 1차 발굴 리스트(연락처 없음)는 공유용으로 버전관리
+!data/sourcing/leads.seed.csv
 
 # 마케팅 실데이터(키워드 DB/성과 보고서/인플루언서 연락처)
 data/marketing/*.csv

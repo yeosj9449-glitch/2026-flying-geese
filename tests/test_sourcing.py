@@ -141,3 +141,11 @@ def test_log_contact_rejects_unknown_id(tmp_path):
     except ValueError:
         return
     raise AssertionError("ValueError expected")
+
+
+def test_unknown_cert_is_fixable_with_confirmation_action():
+    """발굴 단계에서 인증 정보를 아직 모르는 리드는 탈락이 아니라 확인 대상."""
+    ev = evaluate_lead(_lead(cert_type="", cert_number=""), TODAY)
+    assert ev.grade == SourcingGrade.FIXABLE
+    assert "인증 미확인" in ev.missing
+    assert not any("탈락" in a for a in ev.suggested_actions)
