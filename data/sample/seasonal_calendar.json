@@ -44,5 +44,9 @@
 
   {"category": "감귤", "variety": "노지감귤", "type": "과일", "peak_months": [11, 12, 1]},
   {"category": "배추", "variety": "월동배추", "type": "농산", "peak_months": [11, 12]},
-  {"category": "유자", "variety": "유자", "type": "과일", "peak_months": [11, 12]}
+  {"category": "유자", "variety": "유자", "type": "과일", "peak_months": [11, 12]},
+
+  {"category": "블루베리", "variety": "국산 블루베리", "type": "과일", "peak_months": [6, 7]},
+  {"category": "단호박", "variety": "단호박", "type": "농산", "peak_months": [7, 8, 9]},
+  {"category": "레드향", "variety": "레드향", "type": "과일", "peak_months": [12, 1, 2]}
 ]

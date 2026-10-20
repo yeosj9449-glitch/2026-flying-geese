@@ -150,3 +150,110 @@ class OrderLine:
     buyer_phone: str
     status: OrderStatus = OrderStatus.NEW
     tracking_number: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# 소싱 관리 (프리미엄 키즈 큐레이션 공급처 발굴 → 컨택 → 샘플 → 입점)
+# ---------------------------------------------------------------------------
+class SourcingStage(str, Enum):
+    DISCOVERED = "발굴"
+    CONTACTED = "컨택"
+    SAMPLE_REQUESTED = "샘플요청"
+    SAMPLE_REVIEW = "샘플검수"
+    ONBOARDED = "입점"
+    ON_HOLD = "보류"
+    DROPPED = "탈락"
+
+
+class SourcingGrade(str, Enum):
+    KIDS = "S 키즈전용"  # 필수 1·2 통과 + 아이 기준(3) 전부 확인
+    PASS = "A 입점가능"  # 필수 1·2 통과
+    FIXABLE = "B 보완필요"  # 인증은 있으나 조회/검사서 등 서류가 아직 미비
+    REJECT = "X 입점불가"  # 허용 인증 자체가 없음
+
+
+@dataclass
+class SupplierLead:
+    lead_id: str
+    supplier_name: str
+    product_type: str  # 과일 / 농산 / 수산 / 축산
+    items: list[str] = field(default_factory=list)
+    region: str = ""
+    source_channel: str = ""  # 발굴 경로 (친환경인증정보시스템, 지자체몰 등)
+    contact_name: str = ""
+    phone: str = ""
+    email: str = ""
+    stage: SourcingStage = SourcingStage.DISCOVERED
+    # 필수 1: 인증
+    cert_type: str = ""
+    cert_number: str = ""
+    cert_expiry: date | None = None
+    cert_verified_on: date | None = None  # 친환경인증관리정보시스템에서 직접 조회한 날
+    # 필수 2: 안전성 검사 (농산: 잔류농약 / 수산: 중금속·방사능)
+    safety_test_type: str = ""
+    safety_test_on: date | None = None
+    # 3: 아이 기준
+    kid_bite_size: bool = False
+    kid_small_pack: bool = False
+    kid_no_additive: bool = False
+    # 4: 품질
+    brix: float | None = None
+    harvest_to_ship_days: int | None = None
+    cold_chain: bool = False
+    # 5: 스토리
+    story_available: bool = False
+    next_action: str = ""
+    next_action_date: date | None = None
+    notes: str = ""
+
+
+@dataclass
+class ContactLog:
+    lead_id: str
+    contacted_on: date | None
+    channel: str
+    summary: str
+    outcome: str = ""
+
+
+@dataclass
+class SampleInspection:
+    lead_id: str
+    item: str
+    received_on: date | None
+    shipping_days: int | None = None  # 주문 → 수령 일수
+    brix: float | None = None
+    freshness_score: int | None = None  # 1~5
+    taste_score: int | None = None
+    packaging_score: int | None = None
+    kid_fit_score: int | None = None  # 크기/손질 편의 등 아이 기준 체감
+    notes: str = ""
+
+    def scores(self) -> list[int]:
+        return [
+            s
+            for s in (self.freshness_score, self.taste_score, self.packaging_score, self.kid_fit_score)
+            if s is not None
+        ]
+
+    @property
+    def passed(self) -> bool | None:
+        """평균 4.0 이상이고 2점 이하 항목이 하나도 없어야 통과. 점수 미입력이면 None."""
+        scores = self.scores()
+        if not scores:
+            return None
+        return sum(scores) / len(scores) >= 4.0 and min(scores) > 2
+
+
+@dataclass
+class LeadEvaluation:
+    lead: SupplierLead
+    grade: SourcingGrade
+    score: int  # 0~100
+    cert_ok: bool
+    safety_ok: bool
+    kids_ok: bool
+    missing: list[str] = field(default_factory=list)  # 미충족 항목 → 다음 액션으로 변환
+    warnings: list[str] = field(default_factory=list)
+    suggested_actions: list[str] = field(default_factory=list)
+    sample_passed: bool | None = None

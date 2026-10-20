@@ -18,6 +18,10 @@
 
 `flying_geese/pipeline.py`가 5단계를 순서대로 오케스트레이션합니다.
 
+> **프리미엄 키즈 큐레이션 전략**: 기획안은 [`docs/premium_kids_strategy.md`](docs/premium_kids_strategy.md),
+> 1~2주차 실행 키트는 [`docs/week1-2_kit.md`](docs/week1-2_kit.md)에 있습니다. 이를 지원하는 소싱 관리,
+> 키워드 자동화, 인플루언서 시딩, 제철 검증 도구는 아래 "프리미엄 키즈 큐레이션 운영 도구" 절을 참고하세요.
+
 ### 제철 캘린더 게이팅 (2단계 스코어링과 연동)
 
 1단계에서 통과한(폭등 제외 + 가격 안정) 대표 품목 중, `data/sample/seasonal_calendar.json`의
@@ -222,3 +226,38 @@ data/live/               # 실전 파이프라인용 로컬 설정 (.example.jso
 data/manual/             # 수동 리서치 상품 선정용 로컬 설정 (.example.json만 버전관리)
 tests/                    # pytest 단위/통합 테스트
 ```
+
+## 프리미엄 키즈 큐레이션 운영 도구
+
+[기획안 v2](docs/premium_kids_strategy.md)의 기준을 그대로 코드화한 도구입니다. 모든 입력은
+엑셀이나 구글시트로 편집하는 CSV이고(UTF-8, 엑셀 'CSV UTF-8' 저장 가능), 결과는 `output/`에
+대시보드 엑셀로 생성됩니다. 실제 파일이 없으면 `*.example.*` 예시 데이터로 동작하며
+(출력에 ⚠ 표시), 예시 데이터로 실행할 때는 누적 이력을 기록하지 않습니다.
+
+| 명령 | 입력 | 출력 | 내용 |
+| --- | --- | --- | --- |
+| `sourcing` | `data/sourcing/leads.csv`, `contacts.csv`, `samples.csv` | `output/sourcing_dashboard.xlsx` | 입점 기준(①인증 ②검사 필수, ③아이 기준 → 키즈 전용, ④⑤ 가점) 자동 등급화(S/A/B/X), 할 일(지연·재연락·자동 제안), 인증 만료와 재조회 경고, 퍼널 추이 누적(`history.csv`) |
+| `sourcing-log <ID>` | 명령 인자 | `contacts.csv` 누적 + `leads.csv` 갱신 | 연락 1건 기록, `--stage`/`--next-action`/`--next-date`로 단계와 다음 액션 동시 갱신 |
+| `keywords` | 검색광고 API 또는 `--from-file` (키워드도구 CSV/JSON), `data/marketing/keyword_rules.json` | `output/keyword_report.xlsx`, `keyword_upload.csv`, `data/marketing/keyword_db.csv` | 품목×수식어 힌트 → 연관 키워드 수집 → 제외어·의도·타깃 분류 → A 핵심/B 테스트/C 콘텐츠/X 제외, 광고그룹 제안, 신규·급상승 누적 추적. `--with-shopping`이면 쇼핑 상품 수로 포화도 산정. `data/marketing/ad_performance.csv`(성과 보고서)가 있으면 ROAS 기준 입찰 조정 제안 |
+| `influencers` | `data/marketing/influencers.csv` | `output/influencer_dashboard.xlsx` | 시딩 우선순위(아이 월령 40% + 참여율 40% + 팔로워 구간 20%), 상태 퍼널, 리마인드 할 일, 공구 후보, 쿠폰 ROI |
+| `season-check` | `--arrivals` 월별 반입량 CSV, `--search` 월별 검색지수 CSV | 콘솔 | 출하·검색 성수기, 판매 적기, 사전예약 오픈 월, 제철 캘린더와의 일치도·불일치 알림 |
+
+```bash
+cp data/sourcing/leads.example.csv data/sourcing/leads.csv   # 예시 행을 지우고 실제 공급처 입력
+python -m flying_geese.cli sourcing
+python -m flying_geese.cli sourcing-log L001 --channel 전화 --summary "샘플 요청" --stage 샘플요청 \
+    --next-action "샘플 수령 확인" --next-date 2026-10-24
+python -m flying_geese.cli keywords --items 감귤,딸기,고구마
+python -m flying_geese.cli influencers
+python -m flying_geese.cli season-check --arrivals data/live/arrivals.csv --search data/live/search.csv
+```
+
+- **실데이터는 커밋되지 않습니다.** `data/sourcing/*.csv`, `data/marketing/*.csv`(농가와 인플루언서 연락처,
+  키워드 DB, 성과 보고서)는 `.gitignore` 처리되어 있습니다.
+- **키워드 API**: `NAVER_SEARCHAD_*`(연관 키워드) 필수, 포화도 조회는 네이버 개발자센터 앱에 '검색' API를
+  추가하면 `NAVER_DATALAB_CLIENT_ID/SECRET`을 그대로 사용합니다. 키가 없으면 키워드도구 화면에서 받은 CSV를
+  `--from-file`로 넣으면 됩니다. 힌트 묶음 하나가 실패해도 나머지는 계속 수집합니다.
+- **입찰 조정은 제안만 합니다.** 실제 입찰 변경은 검색광고 관리시스템에서 사람이 확인한 뒤 적용합니다.
+- **제철 검증용 예시 시계열**(`data/sample/arrivals.example.csv`, `search_seasonality.example.csv`)은
+  형태만 흉내 낸 가상값입니다. 가락시장 월별 반입량 통계와 데이터랩 월별 검색지수로 바꿔서 사용하세요.
+  제철 캘린더에는 키즈 큐레이션 품목(블루베리, 단호박, 레드향)을 추가했습니다.

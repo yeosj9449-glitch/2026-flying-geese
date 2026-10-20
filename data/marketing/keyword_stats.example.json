@@ -1,0 +1,320 @@
+{
+ "_주의": "예시 데이터입니다(실제 검색량 아님). 검색광고 키워드도구 결과로 교체하세요.",
+ "keywordList": [
+  {
+   "relKeyword": "유기농사과",
+   "monthlyPcQcCnt": 1200,
+   "monthlyMobileQcCnt": 5400,
+   "monthlyAvePcClkCnt": 14.4,
+   "monthlyAveMobileClkCnt": 97.2,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기사과",
+   "monthlyPcQcCnt": 150,
+   "monthlyMobileQcCnt": 980,
+   "monthlyAvePcClkCnt": 1.8,
+   "monthlyAveMobileClkCnt": 17.6,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "미니사과",
+   "monthlyPcQcCnt": 900,
+   "monthlyMobileQcCnt": 6100,
+   "monthlyAvePcClkCnt": 10.8,
+   "monthlyAveMobileClkCnt": 109.8,
+   "compIdx": "높음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "이유식사과",
+   "monthlyPcQcCnt": 40,
+   "monthlyMobileQcCnt": 320,
+   "monthlyAvePcClkCnt": 0.5,
+   "monthlyAveMobileClkCnt": 5.8,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유기농감귤",
+   "monthlyPcQcCnt": 800,
+   "monthlyMobileQcCnt": 4200,
+   "monthlyAvePcClkCnt": 9.6,
+   "monthlyAveMobileClkCnt": 75.6,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기귤",
+   "monthlyPcQcCnt": 90,
+   "monthlyMobileQcCnt": 760,
+   "monthlyAvePcClkCnt": 1.1,
+   "monthlyAveMobileClkCnt": 13.7,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유기농귤5kg",
+   "monthlyPcQcCnt": 60,
+   "monthlyMobileQcCnt": 410,
+   "monthlyAvePcClkCnt": 0.7,
+   "monthlyAveMobileClkCnt": 7.4,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "감귤선물세트",
+   "monthlyPcQcCnt": 700,
+   "monthlyMobileQcCnt": 5200,
+   "monthlyAvePcClkCnt": 8.4,
+   "monthlyAveMobileClkCnt": 93.6,
+   "compIdx": "높음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "이유식단호박",
+   "monthlyPcQcCnt": 50,
+   "monthlyMobileQcCnt": 600,
+   "monthlyAvePcClkCnt": 0.6,
+   "monthlyAveMobileClkCnt": 10.8,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유기농단호박",
+   "monthlyPcQcCnt": 120,
+   "monthlyMobileQcCnt": 890,
+   "monthlyAvePcClkCnt": 1.4,
+   "monthlyAveMobileClkCnt": 16.0,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기고구마",
+   "monthlyPcQcCnt": 80,
+   "monthlyMobileQcCnt": 950,
+   "monthlyAvePcClkCnt": 1.0,
+   "monthlyAveMobileClkCnt": 17.1,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유기농고구마10kg",
+   "monthlyPcQcCnt": 70,
+   "monthlyMobileQcCnt": 520,
+   "monthlyAvePcClkCnt": 0.8,
+   "monthlyAveMobileClkCnt": 9.4,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기고구마간식만들기",
+   "monthlyPcQcCnt": 30,
+   "monthlyMobileQcCnt": 880,
+   "monthlyAvePcClkCnt": 0.4,
+   "monthlyAveMobileClkCnt": 15.8,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "사과이유식만드는법",
+   "monthlyPcQcCnt": 60,
+   "monthlyMobileQcCnt": 2100,
+   "monthlyAvePcClkCnt": 0.7,
+   "monthlyAveMobileClkCnt": 37.8,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "이유식단호박언제부터",
+   "monthlyPcQcCnt": 20,
+   "monthlyMobileQcCnt": 640,
+   "monthlyAvePcClkCnt": 0.2,
+   "monthlyAveMobileClkCnt": 11.5,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유기농딸기",
+   "monthlyPcQcCnt": 300,
+   "monthlyMobileQcCnt": 2800,
+   "monthlyAvePcClkCnt": 3.6,
+   "monthlyAveMobileClkCnt": 50.4,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기딸기",
+   "monthlyPcQcCnt": 40,
+   "monthlyMobileQcCnt": 410,
+   "monthlyAvePcClkCnt": 0.5,
+   "monthlyAveMobileClkCnt": 7.4,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "딸기선물세트",
+   "monthlyPcQcCnt": 600,
+   "monthlyMobileQcCnt": 7800,
+   "monthlyAvePcClkCnt": 7.2,
+   "monthlyAveMobileClkCnt": 140.4,
+   "compIdx": "높음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "돌답례품과일",
+   "monthlyPcQcCnt": 20,
+   "monthlyMobileQcCnt": 260,
+   "monthlyAvePcClkCnt": 0.2,
+   "monthlyAveMobileClkCnt": 4.7,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "출산선물과일",
+   "monthlyPcQcCnt": 10,
+   "monthlyMobileQcCnt": 90,
+   "monthlyAvePcClkCnt": 0.1,
+   "monthlyAveMobileClkCnt": 1.6,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "과일선물세트",
+   "monthlyPcQcCnt": 9000,
+   "monthlyMobileQcCnt": 61000,
+   "monthlyAvePcClkCnt": 108.0,
+   "monthlyAveMobileClkCnt": 1098.0,
+   "compIdx": "높음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유아김",
+   "monthlyPcQcCnt": 210,
+   "monthlyMobileQcCnt": 2300,
+   "monthlyAvePcClkCnt": 2.5,
+   "monthlyAveMobileClkCnt": 41.4,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기김",
+   "monthlyPcQcCnt": 300,
+   "monthlyMobileQcCnt": 3400,
+   "monthlyAvePcClkCnt": 3.6,
+   "monthlyAveMobileClkCnt": 61.2,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유아순살생선",
+   "monthlyPcQcCnt": 20,
+   "monthlyMobileQcCnt": 180,
+   "monthlyAvePcClkCnt": 0.2,
+   "monthlyAveMobileClkCnt": 3.2,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기가자미",
+   "monthlyPcQcCnt": 30,
+   "monthlyMobileQcCnt": 390,
+   "monthlyAvePcClkCnt": 0.4,
+   "monthlyAveMobileClkCnt": 7.0,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기과자",
+   "monthlyPcQcCnt": 3000,
+   "monthlyMobileQcCnt": 18000,
+   "monthlyAvePcClkCnt": 36.0,
+   "monthlyAveMobileClkCnt": 324.0,
+   "compIdx": "높음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기주스",
+   "monthlyPcQcCnt": 400,
+   "monthlyMobileQcCnt": 2100,
+   "monthlyAvePcClkCnt": 4.8,
+   "monthlyAveMobileClkCnt": 37.8,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "사과",
+   "monthlyPcQcCnt": 30000,
+   "monthlyMobileQcCnt": 120000,
+   "monthlyAvePcClkCnt": 360.0,
+   "monthlyAveMobileClkCnt": 2160.0,
+   "compIdx": "높음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "부사사과5kg",
+   "monthlyPcQcCnt": 400,
+   "monthlyMobileQcCnt": 3100,
+   "monthlyAvePcClkCnt": 4.8,
+   "monthlyAveMobileClkCnt": 55.8,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유기농블루베리",
+   "monthlyPcQcCnt": 400,
+   "monthlyMobileQcCnt": 3000,
+   "monthlyAvePcClkCnt": 4.8,
+   "monthlyAveMobileClkCnt": 54.0,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기블루베리",
+   "monthlyPcQcCnt": 30,
+   "monthlyMobileQcCnt": 250,
+   "monthlyAvePcClkCnt": 0.4,
+   "monthlyAveMobileClkCnt": 4.5,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유기농채소꾸러미",
+   "monthlyPcQcCnt": 90,
+   "monthlyMobileQcCnt": 700,
+   "monthlyAvePcClkCnt": 1.1,
+   "monthlyAveMobileClkCnt": 12.6,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "이유식재료",
+   "monthlyPcQcCnt": 200,
+   "monthlyMobileQcCnt": 1900,
+   "monthlyAvePcClkCnt": 2.4,
+   "monthlyAveMobileClkCnt": 34.2,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "아기김치",
+   "monthlyPcQcCnt": 500,
+   "monthlyMobileQcCnt": 4000,
+   "monthlyAvePcClkCnt": 6.0,
+   "monthlyAveMobileClkCnt": 72.0,
+   "compIdx": "중간",
+   "plAvgDepth": 15
+  },
+  {
+   "relKeyword": "유아과일정기배송",
+   "monthlyPcQcCnt": 10,
+   "monthlyMobileQcCnt": 40,
+   "monthlyAvePcClkCnt": 0.1,
+   "monthlyAveMobileClkCnt": 0.7,
+   "compIdx": "낮음",
+   "plAvgDepth": 15
+  }
+ ]
+}

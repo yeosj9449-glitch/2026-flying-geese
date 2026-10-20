@@ -15,3 +15,14 @@ data/live/*.csv
 # 수동 리서치 상품 선정(product_selection.py)에 채워 넣는 실제 조사 값도 마찬가지.
 data/manual/*.json
 !data/manual/*.example.json
+
+# 소싱 관리 실데이터(농가 연락처 등 개인정보)와 누적 이력 - 예시 템플릿만 버전관리
+data/sourcing/*.csv
+!data/sourcing/*.example.csv
+
+# 마케팅 실데이터(키워드 DB/성과 보고서/인플루언서 연락처)
+data/marketing/*.csv
+!data/marketing/*.example.csv
+data/marketing/keyword_stats.json
+data/marketing/shopping_counts.json
+output/*.csv
